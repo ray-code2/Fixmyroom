@@ -1,0 +1,16 @@
+export const colors = {
+  coffee: '#4B2E1F',
+  coffeeDark: '#241812',
+  black: '#171412',
+  muted: '#6F625A',
+  line: '#EADFD2',
+  ivory: '#FBFAF7',
+  white: '#FFFFFF',
+  danger: '#B42318',
+  dangerBg: '#FEF2F2',
+  success: '#047857',
+  successBg: '#ECFDF5',
+  warning: '#D97706',
+  warningBg: '#FFFBEB',
+  gold: '#8A5A2F',
+};
