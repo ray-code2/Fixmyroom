@@ -20,7 +20,7 @@ export function HeroSection() {
                 <div className="max-w-3xl">
                   <Badge tone="brown">Maintenance tracking for property teams</Badge>
                   <h1 className="mt-6 text-balance text-5xl font-semibold leading-[1.04] tracking-normal text-[#171412] sm:text-6xl lg:text-7xl">
-                    Fix room issues before they become <BrushText>bad reviews</BrushText>.
+                    Fix room issues before they become <BrushText>bad reviews</BrushText>
                   </h1>
                   <p className="mt-6 max-w-2xl text-pretty text-lg leading-8 text-[#5f5149]">
                     FMR turns staff-reported room problems into tracked repair tickets,
@@ -40,10 +40,6 @@ export function HeroSection() {
                     <span className="text-[#d8c6b5]">·</span>
                     <span className="flex items-center gap-1.5 text-sm font-semibold text-[#6b5849]">
                       <span className="text-base">🖥</span> Desktop compatible
-                    </span>
-                    <span className="text-[#d8c6b5]">·</span>
-                    <span className="flex items-center gap-1.5 text-sm font-semibold text-[#6b5849]">
-                      <span className="text-base">☁</span> No setup needed
                     </span>
                   </div>
                   <div className="mt-10 border-y border-[#eadfd2] py-4">
