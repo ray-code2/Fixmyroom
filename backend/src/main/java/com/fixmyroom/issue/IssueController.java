@@ -2,10 +2,12 @@ package com.fixmyroom.issue;
 
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -26,6 +28,14 @@ public class IssueController {
     public IssueResponse create(@Valid @RequestBody IssueCreateRequest req,
                                 @AuthenticationPrincipal Jwt jwt) {
         return issueService.create(req, employeeId(jwt), propertyId(jwt));
+    }
+
+    @PostMapping(value = "/{id}/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('STAFF')")
+    public IssueResponse uploadPhoto(@PathVariable UUID id,
+                                     @RequestParam("file") MultipartFile file,
+                                     @AuthenticationPrincipal Jwt jwt) {
+        return issueService.uploadPhoto(id, file, propertyId(jwt));
     }
 
     @GetMapping

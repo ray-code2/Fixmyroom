@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { photoUrl } from '../api/issueApi';
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -101,10 +103,23 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
 
         {issue && (
           <>
+            {/* Photo */}
+            {issue.photoUrl ? (
+              <Image
+                source={{ uri: photoUrl(issue.photoUrl) }}
+                style={styles.photo}
+                resizeMode="contain"
+              />
+            ) : null}
+
             {/* Title & meta */}
             <View style={styles.section}>
               <View style={styles.unitRow}>
-                <Text style={styles.unit}>Unit {issue.unitNumber}</Text>
+                {issue.unitNumber ? (
+                  <Text style={styles.unit}>Unit {issue.unitNumber}</Text>
+                ) : (
+                  <View />
+                )}
                 <Text style={styles.reportedDate}>
                   {timeAgo(issue.createdAt)} · {formatDate(issue.createdAt)}
                 </Text>
@@ -368,4 +383,10 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   resolvedText: { fontSize: 13, color: colors.success, fontWeight: '600' },
+  photo: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    borderRadius: 14,
+    backgroundColor: '#000',
+  },
 });

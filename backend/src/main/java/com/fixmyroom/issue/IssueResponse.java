@@ -23,7 +23,8 @@ public record IssueResponse(
         BigDecimal actualCost,
         Instant createdAt,
         Instant updatedAt,
-        Instant resolvedAt
+        Instant resolvedAt,
+        String photoUrl
 ) {
     public static IssueResponse from(IssueRecord r, List<NoteResponse> notes) {
         return new IssueResponse(
@@ -32,7 +33,8 @@ public record IssueResponse(
                 r.reportedById(), r.reportedByName(),
                 r.assignedToId(), r.assignedToName(),
                 notes, r.estimatedCost(), r.actualCost(),
-                r.createdAt(), r.updatedAt(), r.resolvedAt()
+                r.createdAt(), r.updatedAt(), r.resolvedAt(),
+                r.photoUrl()
         );
     }
 }

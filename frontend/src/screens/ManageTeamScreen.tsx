@@ -21,6 +21,8 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [filter, setFilter] = useState<'ALL' | 'STAFF' | 'TECHNICIAN'>('ALL');
+
   const [activeId, setActiveId] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [outcome, setOutcome] = useState<ResetOutcome | null>(null);
@@ -77,17 +79,31 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
           View your staff and technicians. Tap Reset Password to set a new login for any team member.
         </Text>
 
+        <View style={styles.filterRow}>
+          {(['ALL', 'STAFF', 'TECHNICIAN'] as const).map((f) => (
+            <TouchableOpacity
+              key={f}
+              style={[styles.filterTab, filter === f && styles.filterTabActive]}
+              onPress={() => setFilter(f)}
+            >
+              <Text style={[styles.filterTabText, filter === f && styles.filterTabTextActive]}>
+                {f === 'ALL' ? 'All' : f === 'STAFF' ? 'Staff' : 'Technician'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         {loading && <ActivityIndicator color={colors.coffee} style={styles.loader} />}
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        {!loading && employees.length === 0 && !error && (
+        {!loading && employees.filter((e) => filter === 'ALL' || e.role === filter).length === 0 && !error && (
           <View style={styles.emptyBox}>
             <Text style={styles.emptyText}>No team members yet.</Text>
             <Text style={styles.emptyHint}>Add staff or technicians from the dashboard.</Text>
           </View>
         )}
 
-        {employees.map((emp) => {
+        {employees.filter((emp) => filter === 'ALL' || emp.role === filter).map((emp) => {
           const isActive = activeId === emp.id;
           const roleStyle = ROLE_COLORS[emp.role] ?? { bg: colors.ivory, text: colors.muted };
 
@@ -167,6 +183,21 @@ const styles = StyleSheet.create({
   backText: { color: colors.coffee, fontWeight: '600', fontSize: 14 },
   title: { fontSize: 22, fontWeight: '700', color: colors.black },
   subtitle: { fontSize: 14, color: colors.muted, lineHeight: 20 },
+  filterRow: { flexDirection: 'row', gap: 8 },
+  filterTab: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.ivory,
+  },
+  filterTabActive: {
+    backgroundColor: colors.coffee,
+    borderColor: colors.coffee,
+  },
+  filterTabText: { fontSize: 13, fontWeight: '600', color: colors.muted },
+  filterTabTextActive: { color: colors.white },
   loader: { marginTop: 24 },
   errorText: { color: colors.danger, fontWeight: '600', fontSize: 14 },
   emptyBox: {

@@ -7,7 +7,8 @@ import type {
   IssueStatusPayload,
   NoteSummary,
 } from '../types/issue';
-import { apiRequest } from './http';
+import { API_BASE_URL } from '../config/env';
+import { ApiClientError, apiRequest } from './http';
 
 export function listIssues(token: string, status?: IssueStatus): Promise<IssueSummary[]> {
   const query = status ? `?status=${status}` : '';
@@ -52,4 +53,39 @@ export function addNote(id: string, body: string, token: string): Promise<NoteSu
     body: { body },
     token,
   });
+}
+
+export async function uploadIssuePhoto(
+  issueId: string,
+  photo: File | { uri: string; name: string; type: string },
+  token: string
+): Promise<IssueDetail> {
+  const formData = new FormData();
+  if (photo instanceof File) {
+    formData.append('file', photo);
+  } else {
+    formData.append('file', { uri: photo.uri, name: photo.name, type: photo.type } as unknown as Blob);
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/issues/${issueId}/photo`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  const text = await response.text();
+  const payload = text ? (JSON.parse(text) as unknown) : null;
+
+  if (!response.ok) {
+    const msg = payload && typeof payload === 'object' && 'message' in payload
+      ? String((payload as { message: unknown }).message)
+      : 'Photo upload failed.';
+    throw new ApiClientError(response.status, msg);
+  }
+
+  return payload as IssueDetail;
+}
+
+export function photoUrl(relativePath: string): string {
+  return `${API_BASE_URL}${relativePath}`;
 }

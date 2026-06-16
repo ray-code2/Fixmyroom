@@ -22,5 +22,6 @@ public record IssueRecord(
         BigDecimal actualCost,
         Instant createdAt,
         Instant updatedAt,
-        Instant resolvedAt
+        Instant resolvedAt,
+        String photoUrl
 ) {}

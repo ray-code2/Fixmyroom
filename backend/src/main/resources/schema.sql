@@ -99,3 +99,5 @@ CREATE INDEX IF NOT EXISTS idx_issue_history_issue_id ON issue_status_history(is
 
 ALTER TABLE issues ADD COLUMN IF NOT EXISTS estimated_cost NUMERIC(10,2);
 ALTER TABLE issues ADD COLUMN IF NOT EXISTS actual_cost NUMERIC(10,2);
+ALTER TABLE issues ALTER COLUMN room_id DROP NOT NULL;
+ALTER TABLE issues ADD COLUMN IF NOT EXISTS photo_url VARCHAR(500);

@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import * as ImagePicker from 'expo-image-picker';
+import { useState } from 'react';
 import {
-  ActivityIndicator,
+  Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,48 +10,84 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { createIssue } from '../api/issueApi';
-import { getRooms } from '../api/roomApi';
+import { createIssue, uploadIssuePhoto } from '../api/issueApi';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { Screen } from '../components/Screen';
 import { useNavigation } from '../navigation/NavigationContext';
 import { colors } from '../theme/colors';
 import type { EmployeeProfile } from '../types/auth';
-import type { IssueCategory, IssuePriority, RoomSummary } from '../types/issue';
+import type { IssueCategory, IssuePriority } from '../types/issue';
 import { CATEGORY_LABELS, PRIORITY_LABELS } from '../types/issue';
 
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as IssueCategory[];
 const PRIORITIES = Object.keys(PRIORITY_LABELS) as IssuePriority[];
+
+type MobilePhoto = { uri: string; name: string; type: string };
 
 interface Props {
   token: string;
   employee: EmployeeProfile;
 }
 
-export function CreateIssueScreen({ token, employee }: Props) {
+export function CreateIssueScreen({ token }: Props) {
   const { goBack, navigate } = useNavigation();
 
-  const [rooms, setRooms] = useState<RoomSummary[]>([]);
-  const [roomsLoading, setRoomsLoading] = useState(true);
-
-  const [roomId, setRoomId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<IssueCategory>('OTHER');
   const [priority, setPriority] = useState<IssuePriority>('MEDIUM');
 
+  // photoUri is used for local preview; photoFile/mobilePhoto carry the raw data for upload
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [mobilePhoto, setMobilePhoto] = useState<MobilePhoto | null>(null);
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    getRooms(token)
-      .then(setRooms)
-      .catch(() => setError('Could not load units.'))
-      .finally(() => setRoomsLoading(false));
-  }, [token]);
+  async function handlePickPhoto() {
+    setError('');
+
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/jpeg,image/png';
+      input.onchange = () => {
+        const file = input.files?.[0];
+        if (file) {
+          setPhotoUri(URL.createObjectURL(file));
+          setPhotoFile(file);
+          setMobilePhoto(null);
+        }
+      };
+      input.click();
+    } else {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        setError('Camera permission is required to take a photo.');
+        return;
+      }
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        quality: 1.0,
+      });
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        const ext = asset.mimeType === 'image/png' ? 'png' : 'jpg';
+        setPhotoUri(asset.uri);
+        setMobilePhoto({ uri: asset.uri, name: `photo.${ext}`, type: asset.mimeType ?? 'image/jpeg' });
+        setPhotoFile(null);
+      }
+    }
+  }
+
+  function removePhoto() {
+    setPhotoUri(null);
+    setPhotoFile(null);
+    setMobilePhoto(null);
+  }
 
   async function handleSubmit() {
-    if (!roomId) { setError('Select a unit.'); return; }
     if (title.trim().length < 3) { setError('Title must be at least 3 characters.'); return; }
 
     setError('');
@@ -57,12 +95,16 @@ export function CreateIssueScreen({ token, employee }: Props) {
     try {
       const trimmedDesc = description.trim();
       const issue = await createIssue({
-        roomId,
         title: title.trim(),
         category,
         priority,
         ...(trimmedDesc ? { description: trimmedDesc } : {}),
       }, token);
+
+      if (photoFile ?? mobilePhoto) {
+        await uploadIssuePhoto(issue.id, (photoFile ?? mobilePhoto)!, token);
+      }
+
       navigate({ name: 'IssueDetail', issueId: issue.id });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to submit issue.');
@@ -81,25 +123,28 @@ export function CreateIssueScreen({ token, employee }: Props) {
         <Text style={styles.heading}>Report an Issue</Text>
         <Text style={styles.sub}>Fill in the details. The manager will be notified immediately.</Text>
 
-        {/* Unit selector */}
+        {/* Photo attachment */}
         <View style={styles.field}>
-          <Text style={styles.label}>Unit *</Text>
-          {roomsLoading ? (
-            <ActivityIndicator color={colors.coffee} />
+          <Text style={styles.label}>Photo</Text>
+          {photoUri ? (
+            <View style={styles.photoPreviewWrap}>
+              <Image source={{ uri: photoUri }} style={styles.photoPreview} resizeMode="contain" />
+              <TouchableOpacity style={styles.removePhoto} onPress={removePhoto}>
+                <Text style={styles.removePhotoText}>✕ Remove</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-              {rooms.map(r => (
-                <TouchableOpacity
-                  key={r.id}
-                  style={[styles.chip, roomId === r.id && styles.chipActive]}
-                  onPress={() => setRoomId(r.id)}
-                >
-                  <Text style={[styles.chipText, roomId === r.id && styles.chipTextActive]}>
-                    {r.unitNumber}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+            <TouchableOpacity style={styles.photoPlaceholder} onPress={() => { void handlePickPhoto(); }}>
+              <Text style={styles.photoIcon}>📷</Text>
+              <Text style={styles.photoPlaceholderTitle}>
+                {Platform.OS === 'web' ? 'Click to upload a photo' : 'Tap to open camera'}
+              </Text>
+              <Text style={styles.photoPlaceholderHint}>
+                {Platform.OS === 'web'
+                  ? 'Accepts JPEG and PNG only · AI will detect category'
+                  : 'AI will detect the issue category automatically'}
+              </Text>
+            </TouchableOpacity>
           )}
         </View>
 
@@ -134,7 +179,10 @@ export function CreateIssueScreen({ token, employee }: Props) {
 
         {/* Category */}
         <View style={styles.field}>
-          <Text style={styles.label}>Category *</Text>
+          <View style={styles.labelRow}>
+            <Text style={styles.label}>Category</Text>
+            <Text style={styles.labelHint}>Auto-detected from photo · editable</Text>
+          </View>
           <View style={styles.grid}>
             {CATEGORIES.map(c => (
               <TouchableOpacity
@@ -152,7 +200,7 @@ export function CreateIssueScreen({ token, employee }: Props) {
 
         {/* Priority */}
         <View style={styles.field}>
-          <Text style={styles.label}>Priority *</Text>
+          <Text style={styles.label}>Priority</Text>
           <View style={styles.priorityRow}>
             {PRIORITIES.map(p => (
               <TouchableOpacity
@@ -171,7 +219,7 @@ export function CreateIssueScreen({ token, employee }: Props) {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <PrimaryButton
-          label="Submit Issue"
+          label={submitting ? (photoFile ?? mobilePhoto ? 'Uploading…' : 'Submitting…') : 'Submit Issue'}
           loading={submitting}
           onPress={handleSubmit}
           style={styles.cta}
@@ -188,7 +236,9 @@ const styles = StyleSheet.create({
   heading: { fontSize: 26, fontWeight: '700', color: colors.black },
   sub: { fontSize: 14, color: colors.muted, lineHeight: 21, marginTop: -8 },
   field: { gap: 8 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   label: { fontSize: 12, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4 },
+  labelHint: { fontSize: 11, color: colors.muted, fontStyle: 'italic' },
   input: {
     borderWidth: 1,
     borderColor: '#D6CFC8',
@@ -200,15 +250,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   textarea: { minHeight: 100 },
-  chipRow: { gap: 8, paddingRight: 4 },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: '#F5F0EB',
+  photoPlaceholder: {
     borderWidth: 1.5,
-    borderColor: 'transparent',
+    borderColor: '#D6CFC8',
+    borderStyle: 'dashed',
+    borderRadius: 14,
+    paddingVertical: 28,
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FAFAF8',
   },
+  photoIcon: { fontSize: 28 },
+  photoPlaceholderTitle: { fontSize: 14, fontWeight: '600', color: colors.black },
+  photoPlaceholderHint: { fontSize: 12, color: colors.muted, textAlign: 'center', paddingHorizontal: 24 },
+  photoPreviewWrap: { gap: 8, borderRadius: 14, overflow: 'hidden', backgroundColor: '#000' },
+  photoPreview: { width: '100%', aspectRatio: 4 / 3, borderRadius: 14 },
+  removePhoto: { alignSelf: 'flex-start', paddingHorizontal: 2 },
+  removePhotoText: { fontSize: 13, fontWeight: '600', color: colors.danger },
   chipActive: { backgroundColor: '#F6EFE8', borderColor: colors.coffee },
   chipText: { fontSize: 13, fontWeight: '600', color: colors.muted },
   chipTextActive: { color: colors.coffee },

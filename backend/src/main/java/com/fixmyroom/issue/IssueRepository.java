@@ -31,10 +31,10 @@ public class IssueRepository {
                 "i.category, i.priority, i.status, " +
                 "i.reported_by, rep.name AS reported_by_name, " +
                 "i.assigned_to, tech.name AS assigned_to_name, " +
-                "i.estimated_cost, i.actual_cost, " +
+                "i.estimated_cost, i.actual_cost, i.photo_url, " +
                 "i.created_at, i.updated_at, i.resolved_at " +
                 "FROM issues i " +
-                "JOIN rooms r ON r.id = i.room_id " +
+                "LEFT JOIN rooms r ON r.id = i.room_id " +
                 "JOIN employees rep ON rep.id = i.reported_by " +
                 "LEFT JOIN employees tech ON tech.id = i.assigned_to " +
                 "WHERE i.hotel_id = ?"
@@ -61,10 +61,10 @@ public class IssueRepository {
                 "i.category, i.priority, i.status, " +
                 "i.reported_by, rep.name AS reported_by_name, " +
                 "i.assigned_to, tech.name AS assigned_to_name, " +
-                "i.estimated_cost, i.actual_cost, " +
+                "i.estimated_cost, i.actual_cost, i.photo_url, " +
                 "i.created_at, i.updated_at, i.resolved_at " +
                 "FROM issues i " +
-                "JOIN rooms r ON r.id = i.room_id " +
+                "LEFT JOIN rooms r ON r.id = i.room_id " +
                 "JOIN employees rep ON rep.id = i.reported_by " +
                 "LEFT JOIN employees tech ON tech.id = i.assigned_to " +
                 "WHERE i.id = ? AND i.hotel_id = ?",
@@ -109,7 +109,7 @@ public class IssueRepository {
 
     // --- Mutations ---
 
-    public UUID create(UUID propertyId, UUID roomId, String title, String description,
+    public UUID create(UUID propertyId, @Nullable UUID roomId, String title, String description,
                        IssueCategory category, IssuePriority priority, UUID reportedBy) {
         UUID id = UUID.randomUUID();
         Instant now = Instant.now();
@@ -121,6 +121,13 @@ public class IssueRepository {
         );
         addStatusHistory(id, reportedBy, null, IssueStatus.NEW, null);
         return id;
+    }
+
+    public void updatePhotoUrl(UUID issueId, String photoUrl) {
+        jdbc.update(
+                "UPDATE issues SET photo_url = ?, updated_at = ? WHERE id = ?",
+                photoUrl, Timestamp.from(Instant.now()), issueId
+        );
     }
 
     public void updateStatus(UUID id, IssueStatus status, UUID changedBy,
@@ -202,13 +209,14 @@ public class IssueRepository {
     }
 
     private IssueRecord mapIssue(ResultSet rs, int row) throws SQLException {
+        String roomIdStr = rs.getString("room_id");
         String assignedToId = rs.getString("assigned_to");
         BigDecimal estimatedCost = rs.getBigDecimal("estimated_cost");
         BigDecimal actualCost = rs.getBigDecimal("actual_cost");
         return new IssueRecord(
                 UUID.fromString(rs.getString("id")),
                 UUID.fromString(rs.getString("hotel_id")),
-                UUID.fromString(rs.getString("room_id")),
+                roomIdStr == null ? null : UUID.fromString(roomIdStr),
                 rs.getString("room_number"),
                 rs.getString("title"),
                 rs.getString("description"),
@@ -223,7 +231,8 @@ public class IssueRepository {
                 actualCost,
                 rs.getTimestamp("created_at").toInstant(),
                 rs.getTimestamp("updated_at").toInstant(),
-                rs.getTimestamp("resolved_at") == null ? null : rs.getTimestamp("resolved_at").toInstant()
+                rs.getTimestamp("resolved_at") == null ? null : rs.getTimestamp("resolved_at").toInstant(),
+                rs.getString("photo_url")
         );
     }
 

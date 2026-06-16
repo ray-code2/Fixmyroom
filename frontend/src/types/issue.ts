@@ -51,16 +51,18 @@ export interface IssueSummary {
 }
 
 export interface IssueDetail extends IssueSummary {
-  roomId: string;
+  roomId: string | null;
+  unitNumber: string | null;
   description: string | null;
   reportedById: string;
   assignedToId: string | null;
   notes: NoteSummary[];
   resolvedAt: string | null;
+  photoUrl: string | null;
 }
 
 export interface IssueCreatePayload {
-  roomId: string;
+  roomId?: string;
   title: string;
   description?: string;
   category: IssueCategory;

@@ -1,10 +1,14 @@
 package com.fixmyroom.issue;
 
 import com.fixmyroom.room.RoomRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,9 +24,11 @@ public class IssueService {
     }
 
     public IssueResponse create(IssueCreateRequest req, UUID reportedBy, UUID propertyId) {
-        roomRepo.findByIdAndProperty(req.roomId(), propertyId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Unit not found in this property."));
+        if (req.roomId() != null) {
+            roomRepo.findByIdAndProperty(req.roomId(), propertyId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Unit not found in this property."));
+        }
 
         UUID id = issueRepo.create(propertyId, req.roomId(), req.title(),
                 req.description(), req.category(), req.priority(), reportedBy);
@@ -30,6 +36,30 @@ public class IssueService {
         return issueRepo.findByIdAndProperty(id, propertyId)
                 .map(r -> IssueResponse.from(r, List.of()))
                 .orElseThrow();
+    }
+
+    public IssueResponse uploadPhoto(UUID issueId, MultipartFile file, UUID propertyId) {
+        issueRepo.findByIdAndProperty(issueId, propertyId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found."));
+
+        String contentType = file.getContentType();
+        if (contentType == null || (!contentType.equals("image/jpeg") && !contentType.equals("image/png"))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only JPEG and PNG images are accepted.");
+        }
+
+        String extension = contentType.equals("image/jpeg") ? ".jpg" : ".png";
+        String filename = issueId.toString() + extension;
+
+        try {
+            Path uploadsDir = Path.of(System.getProperty("user.dir"), "uploads");
+            Files.createDirectories(uploadsDir);
+            Files.write(uploadsDir.resolve(filename), file.getBytes());
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to save photo.");
+        }
+
+        issueRepo.updatePhotoUrl(issueId, "/uploads/" + filename);
+        return get(issueId, propertyId);
     }
 
     public List<IssueSummaryResponse> list(UUID propertyId, String role, UUID employeeId,
