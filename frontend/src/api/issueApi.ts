@@ -7,11 +7,21 @@ import type {
   IssueStatusPayload,
   NoteSummary,
 } from '../types/issue';
+import type { IssueCostPayload } from './financeApi';
 import { API_BASE_URL } from '../config/env';
 import { ApiClientError, apiRequest } from './http';
 
-export function listIssues(token: string, status?: IssueStatus): Promise<IssueSummary[]> {
-  const query = status ? `?status=${status}` : '';
+export function listIssues(
+  token: string,
+  status?: IssueStatus,
+  from?: string | null,
+  to?: string | null,
+): Promise<IssueSummary[]> {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (from)   params.set('from', from);
+  if (to)     params.set('to', to);
+  const query = params.size ? `?${params.toString()}` : '';
   return apiRequest<IssueSummary[]>(`/api/issues${query}`, { token });
 }
 
@@ -88,4 +98,20 @@ export async function uploadIssuePhoto(
 
 export function photoUrl(relativePath: string): string {
   return `${API_BASE_URL}${relativePath}`;
+}
+
+export function updateIssueCost(id: string, payload: IssueCostPayload, token: string): Promise<IssueDetail> {
+  return apiRequest<IssueDetail>(`/api/issues/${id}/cost`, { method: 'PUT', body: payload, token });
+}
+
+export function submitIssueCost(id: string, token: string): Promise<IssueDetail> {
+  return apiRequest<IssueDetail>(`/api/issues/${id}/cost/submit`, { method: 'POST', token });
+}
+
+export function approveIssueCost(id: string, token: string): Promise<IssueDetail> {
+  return apiRequest<IssueDetail>(`/api/issues/${id}/cost/approve`, { method: 'POST', token });
+}
+
+export function rejectIssueCost(id: string, reason: string, token: string): Promise<IssueDetail> {
+  return apiRequest<IssueDetail>(`/api/issues/${id}/cost/reject`, { method: 'POST', body: { reason }, token });
 }

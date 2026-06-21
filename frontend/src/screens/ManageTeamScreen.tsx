@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { listAllEmployees, resetEmployeePassword, type EmployeeTeamMember } from '../api/employeeApi';
+import { listIssues } from '../api/issueApi';
+import DateRangeFilter, { ALL_TIME, type DateRange } from '../components/DateRangeFilter';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { Screen } from '../components/Screen';
 import { useNavigation } from '../navigation/NavigationContext';
 import { colors } from '../theme/colors';
 import type { EmployeeProfile } from '../types/auth';
+import type { IssueSummary } from '../types/issue';
 
 type ResetOutcome = { status: 'saving' } | { status: 'done' } | { status: 'error'; message: string };
 
@@ -22,6 +25,8 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
   const [error, setError] = useState('');
 
   const [filter, setFilter] = useState<'ALL' | 'STAFF' | 'TECHNICIAN'>('ALL');
+  const [dateRange, setDateRange] = useState<DateRange>(ALL_TIME);
+  const [issues, setIssues] = useState<IssueSummary[]>([]);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
@@ -31,13 +36,18 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
     setLoading(true);
     setError('');
     try {
-      setEmployees(await listAllEmployees(token));
+      const [emps, iss] = await Promise.all([
+        listAllEmployees(token),
+        listIssues(token, undefined, dateRange.from, dateRange.to),
+      ]);
+      setEmployees(emps);
+      setIssues(iss);
     } catch {
       setError('Could not load team. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, dateRange]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -79,6 +89,8 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
           View your staff and technicians. Tap Reset Password to set a new login for any team member.
         </Text>
 
+        <DateRangeFilter value={dateRange} onChange={setDateRange} />
+
         <View style={styles.filterRow}>
           {(['ALL', 'STAFF', 'TECHNICIAN'] as const).map((f) => (
             <TouchableOpacity
@@ -106,6 +118,9 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
         {employees.filter((emp) => filter === 'ALL' || emp.role === filter).map((emp) => {
           const isActive = activeId === emp.id;
           const roleStyle = ROLE_COLORS[emp.role] ?? { bg: colors.ivory, text: colors.muted };
+          const reported  = issues.filter(i => i.reportedByName === emp.name).length;
+          const assigned  = issues.filter(i => i.assignedToName === emp.name).length;
+          const hasActivity = dateRange.from != null || dateRange.to != null;
 
           return (
             <View key={emp.id} style={styles.card}>
@@ -113,6 +128,13 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
                 <View style={styles.cardInfo}>
                   <Text style={styles.empName}>{emp.name}</Text>
                   <Text style={styles.empEmail}>{emp.email}</Text>
+                  {hasActivity && (
+                    <Text style={styles.activityText}>
+                      {emp.role === 'STAFF'
+                        ? `${reported} report${reported !== 1 ? 's' : ''} in period`
+                        : `${assigned} task${assigned !== 1 ? 's' : ''} in period`}
+                    </Text>
+                  )}
                 </View>
                 <View style={[styles.roleChip, { backgroundColor: roleStyle.bg }]}>
                   <Text style={[styles.roleChipText, { color: roleStyle.text }]}>
@@ -228,6 +250,7 @@ const styles = StyleSheet.create({
   cardInfo: { flex: 1, gap: 2 },
   empName: { fontSize: 15, fontWeight: '700', color: colors.black },
   empEmail: { fontSize: 13, color: colors.muted },
+  activityText: { fontSize: 12, color: colors.coffee, fontWeight: '600', marginTop: 2 },
   roleChip: {
     borderRadius: 999,
     paddingHorizontal: 10,

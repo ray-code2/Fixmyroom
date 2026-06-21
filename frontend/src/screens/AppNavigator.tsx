@@ -1,5 +1,16 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  FilePlus,
+  LayoutDashboard,
+  TrendingUp,
+  Upload,
+  UserPlus,
+  Users,
+} from 'lucide-react-native';
 import { useAuth } from '../auth/AuthContext';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { type AppScreen, NavigationProvider, useNavigation } from '../navigation/NavigationContext';
@@ -19,34 +30,37 @@ import { AddTeamMemberScreen } from './AddTeamMemberScreen';
 import { ManageTeamScreen } from './ManageTeamScreen';
 import { UploadTeamScreen } from './UploadTeamScreen';
 import { ProfileScreen } from './ProfileScreen';
+import FinanceDashboardScreen from './FinanceDashboardScreen';
 
 // ── Nav items per role ────────────────────────────────────────────────────────
 
-type NavItem = { label: string; screen: AppScreen };
+type IconComponent = React.ComponentType<{ size?: number; color?: string }>;
+type NavItem = { label: string; screen: AppScreen; icon: IconComponent };
 
 function getNavItems(role: string): NavItem[] {
   switch (role) {
     case 'MANAGER':
       return [
-        { label: 'Dashboard',   screen: { name: 'Dashboard' } },
-        { label: 'All Issues',  screen: { name: 'IssueList' } },
-        { label: 'Manage Team', screen: { name: 'ManageTeam' } },
-        { label: 'Add Member',  screen: { name: 'AddTeamMember' } },
-        { label: 'Upload Team', screen: { name: 'UploadTeam' } },
+        { label: 'Dashboard',   screen: { name: 'Dashboard' },     icon: LayoutDashboard },
+        { label: 'All Issues',  screen: { name: 'IssueList' },     icon: ClipboardList },
+        { label: 'Finance',     screen: { name: 'Finance' },       icon: TrendingUp },
+        { label: 'Manage Team', screen: { name: 'ManageTeam' },    icon: Users },
+        { label: 'Add Member',  screen: { name: 'AddTeamMember' }, icon: UserPlus },
+        { label: 'Upload Team', screen: { name: 'UploadTeam' },    icon: Upload },
       ];
     case 'STAFF':
       return [
-        { label: 'Dashboard',    screen: { name: 'Dashboard' } },
-        { label: 'Report Issue', screen: { name: 'CreateIssue' } },
-        { label: 'All Issues',   screen: { name: 'IssueList' } },
+        { label: 'Dashboard',    screen: { name: 'Dashboard' },  icon: LayoutDashboard },
+        { label: 'Report Issue', screen: { name: 'CreateIssue' }, icon: FilePlus },
+        { label: 'All Issues',   screen: { name: 'IssueList' },  icon: ClipboardList },
       ];
     case 'TECHNICIAN':
       return [
-        { label: 'My Tasks',   screen: { name: 'Dashboard' } },
-        { label: 'All Issues', screen: { name: 'IssueList' } },
+        { label: 'My Tasks',   screen: { name: 'Dashboard' }, icon: LayoutDashboard },
+        { label: 'All Issues', screen: { name: 'IssueList' }, icon: ClipboardList },
       ];
     default:
-      return [{ label: 'Dashboard', screen: { name: 'Dashboard' } }];
+      return [{ label: 'Dashboard', screen: { name: 'Dashboard' }, icon: LayoutDashboard }];
   }
 }
 
@@ -56,7 +70,6 @@ const ROLE_LABELS: Record<string, string> = {
   TECHNICIAN: 'Technician',
 };
 
-// Child screens highlight their parent nav item
 function isNavActive(current: AppScreen, itemScreen: AppScreen): boolean {
   if (current.name === itemScreen.name) return true;
   const issueChildren = ['IssueDetail', 'UpdateStatus', 'AssignTechnician'];
@@ -67,6 +80,8 @@ function isNavActive(current: AppScreen, itemScreen: AppScreen): boolean {
 // ── Desktop sidebar ───────────────────────────────────────────────────────────
 
 const SIDEBAR_BG = '#1E120B';
+const NAV_ACTIVE_COLOR = colors.white;
+const NAV_IDLE_COLOR = '#B8A89A';
 
 function AppSidebar({ employee, onCollapse }: { employee: EmployeeProfile; onCollapse: () => void }) {
   const { current, navigate } = useNavigation();
@@ -74,8 +89,7 @@ function AppSidebar({ employee, onCollapse }: { employee: EmployeeProfile; onCol
   const initials = employee.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
 
   return (
-    // overflow visible so the collapse button can hang off the right edge
-    <View style={{ width: 228, position: 'relative', overflow: 'visible' } as object}>
+    <View style={{ width: 228, position: 'relative', overflow: 'visible', zIndex: 20 } as object}>
       <View style={sb.container}>
         {/* Brand */}
         <View style={sb.brand}>
@@ -88,7 +102,7 @@ function AppSidebar({ employee, onCollapse }: { employee: EmployeeProfile; onCol
           </View>
         </View>
 
-        {/* Business name + hotel chip */}
+        {/* Hotel chip */}
         <View style={sb.hotelChip}>
           <Text style={sb.hotelChipLabel}>BUSINESS</Text>
           <Text style={sb.hotelChipText} numberOfLines={2}>{employee.hotelName}</Text>
@@ -98,12 +112,14 @@ function AppSidebar({ employee, onCollapse }: { employee: EmployeeProfile; onCol
         <View style={sb.nav}>
           {navItems.map(item => {
             const active = isNavActive(current, item.screen);
+            const Icon = item.icon;
             return (
               <Pressable
                 key={item.label}
                 style={[sb.navItem, active && sb.navItemActive]}
                 onPress={() => { if (!active) navigate(item.screen); }}
               >
+                <Icon size={16} color={active ? NAV_ACTIVE_COLOR : NAV_IDLE_COLOR} />
                 <Text style={[sb.navLabel, active && sb.navLabelActive]}>{item.label}</Text>
               </Pressable>
             );
@@ -122,20 +138,19 @@ function AppSidebar({ employee, onCollapse }: { employee: EmployeeProfile; onCol
             <Text style={sb.footerName} numberOfLines={1}>{employee.name}</Text>
             <Text style={sb.footerRole}>{ROLE_LABELS[employee.role] ?? employee.role}</Text>
           </View>
-          <Text style={sb.footerArrow}>›</Text>
+          <ChevronRight size={14} color="#6B5849" />
         </Pressable>
 
-        {/* Copyright */}
         <Text style={sb.copyright}>© Fix My Room. All rights reserved.</Text>
       </View>
 
-      {/* << Collapse toggle — floats at right-center edge */}
+      {/* Collapse toggle */}
       <View
         style={{ position: 'absolute', right: -14, top: 0, bottom: 0, justifyContent: 'center', zIndex: 10 } as object}
         pointerEvents="box-none"
       >
         <Pressable style={sb.collapseBtn} onPress={onCollapse}>
-          <Text style={sb.collapseBtnText}>«</Text>
+          <ChevronLeft size={14} color="#C7A36B" />
         </Pressable>
       </View>
     </View>
@@ -183,6 +198,8 @@ function AppRouter({ token, employee }: { token: string; employee: EmployeeProfi
             employee={employee}
           />
         );
+      case 'Finance':
+        return <FinanceDashboardScreen />;
       case 'Dashboard':
       default:
         if (employee.role === 'MANAGER') return <ManagerDashboardScreen token={token} employee={employee} />;
@@ -199,7 +216,7 @@ function AppRouter({ token, employee }: { token: string; employee: EmployeeProfi
         <AppSidebar employee={employee} onCollapse={() => setSidebarOpen(false)} />
       ) : (
         <Pressable style={rt.expandStrip} onPress={() => setSidebarOpen(true)}>
-          <Text style={rt.expandText}>›</Text>
+          <ChevronRight size={20} color="#C7A36B" />
         </Pressable>
       )}
       <View style={rt.desktopContent}>{screen}</View>
@@ -283,10 +300,17 @@ const sb = StyleSheet.create({
   hotelChipText: { color: '#D8C6B5', fontSize: 12, fontWeight: '600', lineHeight: 16 },
 
   nav: { flex: 1, gap: 2 },
-  navItem: { borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12 },
+  navItem: {
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   navItemActive: { backgroundColor: 'rgba(255,255,255,0.13)' },
-  navLabel: { fontSize: 14, fontWeight: '500', color: '#B8A89A' },
-  navLabelActive: { color: colors.white, fontWeight: '700' },
+  navLabel: { fontSize: 14, fontWeight: '500', color: NAV_IDLE_COLOR },
+  navLabelActive: { color: NAV_ACTIVE_COLOR, fontWeight: '700' },
 
   footer: {
     flexDirection: 'row',
@@ -315,7 +339,6 @@ const sb = StyleSheet.create({
   footerInfo: { flex: 1 },
   footerName: { color: colors.white, fontSize: 12, fontWeight: '700' },
   footerRole: { color: '#9E8C80', fontSize: 11, marginTop: 1 },
-  footerArrow: { color: '#6B5849', fontSize: 16 },
 
   collapseBtn: {
     width: 28,
@@ -327,7 +350,6 @@ const sb = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  collapseBtnText: { color: '#C7A36B', fontSize: 12, fontWeight: '700' },
 
   copyright: {
     color: 'rgba(255,255,255,0.22)',
@@ -351,7 +373,6 @@ const rt = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  expandText: { color: '#C7A36B', fontSize: 20, fontWeight: '700' },
   center: { alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingText: { color: colors.muted, fontSize: 14, fontWeight: '600' },
 });

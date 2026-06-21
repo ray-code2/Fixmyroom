@@ -9,7 +9,7 @@ import { colors } from '../theme/colors';
 import type { EmployeeProfile } from '../types/auth';
 import type { TechnicianDashboard } from '../types/dashboard';
 import { DashboardShell } from './DashboardShell';
-import { BulletList, InfoCard } from './RoleCards';
+import { InfoCard } from './RoleCards';
 
 export function TechnicianDashboardScreen({ token, employee }: { token: string; employee: EmployeeProfile }) {
   const { navigate } = useNavigation();
@@ -67,10 +67,6 @@ export function TechnicianDashboardScreen({ token, employee }: { token: string; 
               <Text style={styles.emptyText}>No tasks assigned to you yet.</Text>
             </View>
           )}
-
-          <InfoCard title="How to update a repair">
-            <BulletList items={dashboard.technicianActions} />
-          </InfoCard>
 
           <PrimaryButton
             label="View All Assigned Issues"

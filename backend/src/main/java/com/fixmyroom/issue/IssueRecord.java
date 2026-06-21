@@ -23,5 +23,14 @@ public record IssueRecord(
         Instant createdAt,
         Instant updatedAt,
         Instant resolvedAt,
-        String photoUrl
+        String photoUrl,
+        BigDecimal materialCost,
+        BigDecimal laborCost,
+        BigDecimal otherCost,
+        String costNotes,
+        CostStatus costStatus,
+        UUID costSubmittedBy,
+        UUID costApprovedBy,
+        Instant costApprovedAt,
+        String costRejectionReason
 ) {}

@@ -12,7 +12,8 @@ export type AppScreen =
   | { name: 'AddTeamMember' }
   | { name: 'ManageTeam' }
   | { name: 'UploadTeam' }
-  | { name: 'UpdateStatus'; issueId: string; currentStatus: string };
+  | { name: 'UpdateStatus'; issueId: string; currentStatus: string }
+  | { name: 'Finance' };
 
 type StackEntry = AppScreen;
 

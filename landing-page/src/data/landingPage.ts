@@ -1,183 +1,193 @@
 export const navLinks = [
   { label: 'How it works', href: '#how-it-works' },
-  { label: 'Fix history', href: '#fix-history' },
-  { label: 'AI approval', href: '#ai-approval' },
-  { label: 'Dashboard', href: '#dashboard' },
-  { label: 'Pricing', href: '#pricing' }
+  { label: 'Features', href: '#features' },
+  { label: 'Roles', href: '#roles' },
+  { label: 'Finance', href: '#finance' },
+  { label: 'Pricing', href: '#pricing' },
 ];
 
-export const audiences = ['Boutique hotels', 'Luxury villas', 'Glamping resorts', 'Vacation rentals'];
+export const audiences = [
+  'Boutique hotels',
+  'Luxury villas',
+  'Serviced apartments',
+  'Vacation rental managers',
+];
 
 export const problems = [
   {
-    label: 'Scattered reporting',
-    title: 'Room issues disappear in WhatsApp chats',
+    label: 'Lost in chats',
+    title: 'Repairs get buried in WhatsApp',
     description:
-      'Problems are mentioned between guest requests, shift updates, and vendor messages, so the repair trail gets buried fast.'
+      'Problems are mentioned between guest requests and shift updates — then forgotten. There is no ticket, no owner, and no way to track if it was ever fixed.',
   },
   {
-    label: 'Missing history',
-    title: 'Managers forget what was already fixed',
+    label: 'No cost visibility',
+    title: 'Nobody knows what repairs actually cost',
     description:
-      'Staff cannot easily check past repairs by room, asset, technician, or vendor when the next issue appears.'
+      'When technicians work informally, material and labour costs are never recorded. Monthly maintenance spend is a mystery until the invoice arrives.',
   },
   {
-    label: 'No proof trail',
-    title: 'Before and after evidence is often missing',
+    label: 'Zero accountability',
+    title: 'Managers cannot see who fixed what, or when',
     description:
-      'Managers do not always know who handled the issue, when it was fixed, what vendor was contacted, or whether proof was uploaded.'
-  }
+      'Without a structured system, there is no audit trail. Managers cannot see who handled an issue, what status it is in, or whether it was resolved.',
+  },
 ];
 
 export const beforeFmrProblems = [
   'AC problem mentioned in group chat',
-  'No clear owner',
-  'Vendor contacted manually',
-  'Follow-ups scattered across messages',
-  'No proof uploaded',
-  'Hard to know if fixed'
+  'No assigned owner — who handles it?',
+  'Status unknown — fixed or ignored?',
+  'Costs tracked in a spreadsheet, or not at all',
+  'No photo proof captured',
+  'Manager follows up via WhatsApp days later',
 ];
 
 export const withFmrOutcomes = [
-  'Room 304 AC issue recorded',
-  'AI classified as HVAC',
-  'Manager approved dispatch',
-  'Vendor contacted from supplier list',
-  'Proof-of-fix uploaded',
-  'History saved forever'
+  'Issue logged with room, photo, and category',
+  'Technician assigned by manager',
+  'Status visible to all: In Progress',
+  'Technician logs material, labour, other costs',
+  'Manager reviews and approves costs',
+  'Issue closed with full audit trail',
 ];
 
 export const howItWorksSteps = [
   {
     number: '01',
-    title: 'Staff captures photo and note',
-    description: 'Housekeeping chooses the room, adds a short note, and uploads a before photo.'
+    title: 'Staff reports the issue',
+    description:
+      'Housekeeping or front desk selects the room, adds a short description, sets the category and priority, and uploads a photo. Done in under a minute.',
   },
   {
     number: '02',
-    title: 'AI classifies issue and urgency',
-    description: 'FMR recommends category, urgency, summary, checklist, and next action.'
+    title: 'Manager reviews and assigns',
+    description:
+      'The new issue appears on the manager dashboard instantly. The manager reviews it, assigns a technician, and adjusts priority if needed.',
   },
   {
     number: '03',
-    title: 'Manager approves dispatch',
-    description: 'The manager edits, approves, assigns internally, or rejects the recommendation.'
+    title: 'Technician works and logs costs',
+    description:
+      'The technician updates the issue status as they work, leaves notes for any blockers, and logs material, labour, and other costs when done.',
   },
   {
     number: '04',
-    title: 'Repair closes with proof',
-    description: 'Technician or staff uploads after photo and notes before manager verification.'
-  }
+    title: 'Manager approves and closes',
+    description:
+      'The manager reviews submitted costs, approves or rejects with a written reason, and closes the issue. The full history is saved permanently.',
+  },
 ];
 
 export const features = [
-  'AI maintenance triage',
-  'Manager approval before dispatch',
-  'Vendor/contact recommendation',
-  'WhatsApp/SMS/email repair request draft',
-  'Technician queue',
-  'Before/after proof-of-fix',
-  'Room-level fix history',
-  'Room status tracking',
-  'Estimate vs. actual cost tracking per ticket',
-  'Transparent monthly maintenance financial statement',
-  'XLSX cost report — ready for your accountant'
+  'Instant issue reporting with photo upload',
+  'Role-based dashboards for Staff, Manager, and Technician',
+  'Issue status workflow: New → Assigned → In Progress → Waiting Parts → Completed',
+  'Technician assignment by manager',
+  'Notes on every issue from any team member',
+  'Cost breakdown per issue: material, labour, and other',
+  'Cost submit and manager approval workflow',
+  'Finance dashboard with date-range filtering',
+  'Estimated vs. actual cost comparison per issue',
+  'Full audit trail — every change is logged with timestamp',
+  'Team management: add members individually or bulk-upload via CSV',
+  'Separate views tailored to each role',
 ];
 
 export const fixHistoryBenefits = [
-  'View complete maintenance history by room',
-  'Track before-and-after repair proof',
-  'See vendor and technician activity',
-  'Reduce repeated room issues',
-  'Replace messy WhatsApp follow-ups with structured records'
+  'Every issue saved with room, category, priority, and assignee',
+  'Status history shows when and who moved each issue forward',
+  'Notes capture blockers, context, and handover details',
+  'Costs are recorded and approved before the issue closes',
+  'Managers filter issues by status, date, or assignee at any time',
 ];
 
 export const fixHistoryRecords = [
   {
     room: 'Room 304',
-    issue: 'AC clicking, warm air',
+    issue: 'AC not cooling — unusual clicking sound',
     category: 'HVAC',
-    assignedTo: 'Preferred HVAC technician',
-    status: 'Fixed',
-    proof: 'Proof uploaded',
+    assignedTo: 'David — HVAC technician',
+    status: 'Completed',
+    proof: 'Costs approved',
     date: 'Today, 11:42 AM',
-    urgency: 'High'
+    urgency: 'High',
   },
   {
     room: 'Villa 12',
-    issue: 'Bathroom leak',
+    issue: 'Bathroom sink leaking under cabinet',
     category: 'Plumbing',
-    assignedTo: 'Island Plumbing Co.',
-    status: 'Assigned',
-    proof: 'Waiting for vendor',
+    assignedTo: 'Rudi — Maintenance',
+    status: 'In Progress',
+    proof: 'Cost pending',
     date: 'Today, 10:18 AM',
-    urgency: 'Medium'
+    urgency: 'Medium',
   },
   {
     room: 'Room 208',
-    issue: 'Broken guest lock',
-    category: 'Locksmith',
-    assignedTo: 'Internal maintenance',
-    status: 'Verified',
-    proof: 'Completed',
+    issue: 'Guest room door lock jammed',
+    category: 'Lock / Key',
+    assignedTo: 'Eko — Internal team',
+    status: 'Completed',
+    proof: 'Costs approved',
     date: 'Yesterday, 4:35 PM',
-    urgency: 'High'
-  }
+    urgency: 'High',
+  },
 ];
 
 export const roles = [
   {
-    role: 'Housekeeping',
-    title: 'Snap photo, add note, submit',
+    role: 'Staff / Housekeeping',
+    title: 'Report room issues in under a minute',
     description:
-      'Staff can report a broken AC, leak, light, lock, or furniture issue without filling out a long work order.'
+      'Select the room, describe the problem, set category and priority, and upload a photo. The manager is notified instantly. No WhatsApp message needed.',
   },
   {
     role: 'Manager',
-    title: 'Review AI diagnosis and approve',
+    title: 'Full visibility and control from one dashboard',
     description:
-      'Managers keep final control over category, urgency, supplier choice, dispatch message, and ticket closure.'
+      'See all open issues at a glance. Assign technicians, adjust priorities, track live status, approve or reject repair costs, and view monthly finance reports filtered by date.',
   },
   {
-    role: 'Technician/vendor',
-    title: 'Receive task and upload proof',
+    role: 'Technician',
+    title: "Focused queue — only what's assigned to you",
     description:
-      'Approved contacts receive the repair request, complete the work, then submit after photo, parts, and notes.'
-  }
+      'See only the issues assigned to you. Update status as you work, leave notes for blockers or waiting parts, then submit your cost breakdown for manager approval when done.',
+  },
 ];
 
 export const metrics = [
-  { label: 'Open tickets', value: '18', delta: '4 urgent' },
-  { label: 'Average fix time', value: '2.8h', delta: '31% faster' },
-  { label: 'Rooms out of service', value: '3', delta: '1 checkout risk' },
-  { label: 'Vendor response rate', value: '92%', delta: 'last 30 days' }
+  { label: 'Open issues', value: '12', delta: '3 urgent' },
+  { label: 'In progress', value: '5', delta: 'across 3 technicians' },
+  { label: 'Pending cost approval', value: '4', delta: 'Rp 2.4M total' },
+  { label: 'Completed this month', value: '31', delta: 'avg. 2.1 days' },
 ];
 
 export const tickets = [
   {
     room: '304',
     category: 'HVAC',
-    title: 'AC not cold, clicking sound',
-    status: 'Awaiting approval',
+    title: 'AC not cooling — clicking noise',
+    status: 'Assigned',
     urgency: 'High',
-    owner: 'Lin, Housekeeping'
+    owner: 'David — HVAC technician',
   },
   {
     room: '118',
     category: 'Plumbing',
-    title: 'Bathroom sink leak',
-    status: 'Assigned',
+    title: 'Bathroom sink leaking',
+    status: 'In progress',
     urgency: 'Medium',
-    owner: 'Internal maintenance'
+    owner: 'Rudi — Maintenance',
   },
   {
     room: 'Villa 7',
     category: 'Electrical',
-    title: 'Outdoor deck light failed',
-    status: 'In progress',
-    urgency: 'Medium',
-    owner: 'Preferred electrician'
-  }
+    title: 'Outdoor deck socket no power',
+    status: 'Waiting parts',
+    urgency: 'Low',
+    owner: 'Eko — Internal team',
+  },
 ];
 
 export const suppliers = [
@@ -186,79 +196,92 @@ export const suppliers = [
     category: 'HVAC',
     status: 'Preferred',
     response: 'Avg. 18 min',
-    channel: 'WhatsApp'
+    channel: 'WhatsApp',
   },
   {
     name: 'Plumber',
     category: 'Plumbing',
     status: 'Preferred',
     response: 'Avg. 24 min',
-    channel: 'SMS'
+    channel: 'SMS',
   },
   {
     name: 'Electrician',
     category: 'Electrical',
     status: 'Backup',
     response: 'Avg. 31 min',
-    channel: 'Email'
+    channel: 'Email',
   },
   {
     name: 'Locksmith',
     category: 'Locks',
     status: 'Preferred',
     response: 'Avg. 15 min',
-    channel: 'WhatsApp'
+    channel: 'WhatsApp',
   },
   {
     name: 'General maintenance',
     category: 'General',
     status: 'Internal',
     response: 'On shift',
-    channel: 'App queue'
-  }
+    channel: 'App queue',
+  },
 ];
 
 export const pricingPlans = [
   {
     name: 'Starter',
-    audience: 'For villas and small stays',
+    audience: 'For villas and small properties',
     price: 'Coming Soon',
-    description: 'Photo reports, AI triage, approval queue, and basic supplier routing.'
+    description:
+      'Issue reporting with photos, role-based dashboards, technician assignment, and status tracking for up to 20 rooms.',
   },
   {
     name: 'Hotel',
     audience: 'For boutique hotels',
     price: 'Contact Us',
-    description: 'Multi-role workflow, room status tracking, vendor logs, and monthly insights.',
-    featured: true
+    description:
+      'Full multi-role workflow, cost breakdown with manager approval, finance dashboard, team management, and bulk CSV upload.',
+    featured: true,
   },
   {
     name: 'Multi-Property',
     audience: 'For property managers',
     price: 'Contact Us',
-    description: 'Portfolio view, property-level supplier lists, reporting, and rollout support.'
-  }
+    description:
+      'Manage multiple properties under one account. Per-property team management, finance reports, and rollout support.',
+  },
 ];
 
 export const faqs = [
   {
-    question: 'Does FMR automatically contact vendors?',
+    question: 'What roles does FMR support?',
     answer:
-      'No. AI can recommend and draft, but manager approval is required before any external dispatch or purchase action.'
+      'FMR has three roles: Staff (reports issues with photos), Manager (assigns technicians, reviews costs, and views finance reports), and Technician (works on issues and logs cost breakdowns). Each role has a dedicated dashboard tailored to their tasks.',
   },
   {
-    question: 'Can we use our own suppliers?',
+    question: 'How does cost tracking work?',
     answer:
-      'Yes. The MVP uses each property approved supplier and technician list rather than a public marketplace.'
+      'When a repair is done, the technician logs costs split into material, labour, and other. They then submit the breakdown for manager review. The manager can approve or reject with a written reason. Approved costs appear in the finance dashboard.',
   },
   {
-    question: 'Does this replace our PMS?',
+    question: 'What does the finance dashboard show?',
     answer:
-      'No. FMR focuses on maintenance triage, manager-approved dispatch, proof-of-fix, and maintenance history.'
+      'The finance dashboard shows total estimated vs. actual costs, total approved spend, pending approvals count, and a list of all issues with cost data. You can filter by date range and by cost status (Draft, Pending, Approved, Rejected).',
   },
   {
-    question: 'What happens if AI classification fails?',
+    question: 'Can we add our own team members?',
     answer:
-      'The ticket still exists. Managers can manually classify, edit, assign, and dispatch using the same approval workflow.'
-  }
+      'Yes. Managers can add staff, managers, or technicians individually by entering name, email, role, and phone. You can also bulk-upload your entire team by uploading a CSV file.',
+  },
+  {
+    question: 'Does FMR replace our PMS or hotel software?',
+    answer:
+      'No. FMR is a focused maintenance tracker for room repairs. It handles issue reporting, technician assignment, status tracking, cost approval, and maintenance history — not reservations, billing, or guest check-in.',
+  },
+  {
+    question: 'Can staff see each other\'s reported issues?',
+    answer:
+      'All team members can view issues for their property. Technicians see their assigned queue on their dashboard, managers see everything. Staff can see the list of all submitted issues and their current status.',
+  },
 ];

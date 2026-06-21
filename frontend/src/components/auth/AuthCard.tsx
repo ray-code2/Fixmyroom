@@ -171,10 +171,7 @@ export function AuthCard({
                     ]}
                   >
                     <Text
-                      style={[
-                        styles.bubbleText,
-                        msg.role === 'user' ? styles.userBubbleText : styles.aiBubbleText,
-                      ]}
+                      style={msg.role === 'user' ? styles.userBubbleText : styles.aiBubbleText}
                     >
                       {msg.content}
                     </Text>

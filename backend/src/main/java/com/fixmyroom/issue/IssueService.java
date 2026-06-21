@@ -9,6 +9,9 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -63,9 +66,12 @@ public class IssueService {
     }
 
     public List<IssueSummaryResponse> list(UUID propertyId, String role, UUID employeeId,
-                                           IssueStatus statusFilter) {
+                                           IssueStatus statusFilter,
+                                           LocalDate from, LocalDate to) {
         UUID assignedToFilter = "TECHNICIAN".equals(role) ? employeeId : null;
-        return issueRepo.findByProperty(propertyId, statusFilter, assignedToFilter)
+        Instant fromInstant = from != null ? from.atStartOfDay(ZoneOffset.UTC).toInstant() : null;
+        Instant toInstant   = to   != null ? to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant() : null;
+        return issueRepo.findByProperty(propertyId, statusFilter, assignedToFilter, fromInstant, toInstant)
                 .stream()
                 .map(IssueSummaryResponse::from)
                 .toList();
@@ -95,6 +101,76 @@ public class IssueService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found."));
 
         issueRepo.assignTechnician(id, req.technicianId(), managerId);
+        return get(id, propertyId);
+    }
+
+    public IssueResponse updateCost(UUID id, UUID propertyId, IssueCostRequest req,
+                                    UUID requesterId, String role) {
+        IssueRecord record = issueRepo.findByIdAndProperty(id, propertyId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found."));
+
+        if ("TECHNICIAN".equals(role)) {
+            if (record.assignedToId() == null || !record.assignedToId().equals(requesterId)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "You can only update cost for issues assigned to you.");
+            }
+        }
+
+        if (record.costStatus() == CostStatus.APPROVED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Cost has already been approved and cannot be modified.");
+        }
+
+        issueRepo.saveCost(id, req.estimatedCost(), req.materialCost(), req.laborCost(),
+                req.otherCost(), req.costNotes(), requesterId);
+        return get(id, propertyId);
+    }
+
+    public IssueResponse submitCost(UUID id, UUID propertyId, UUID requesterId) {
+        IssueRecord record = issueRepo.findByIdAndProperty(id, propertyId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found."));
+
+        if (record.assignedToId() == null || !record.assignedToId().equals(requesterId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "You can only submit cost for issues assigned to you.");
+        }
+        if (record.costStatus() != CostStatus.DRAFT && record.costStatus() != null) {
+            if (record.costStatus() == CostStatus.APPROVED) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Cost is already approved.");
+            }
+        }
+        if (record.materialCost() == null && record.laborCost() == null && record.otherCost() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Enter at least one cost field before submitting.");
+        }
+
+        issueRepo.submitCost(id);
+        return get(id, propertyId);
+    }
+
+    public IssueResponse approveCost(UUID id, UUID propertyId, UUID managerId) {
+        IssueRecord record = issueRepo.findByIdAndProperty(id, propertyId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found."));
+
+        if (record.costStatus() != CostStatus.SUBMITTED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Cost must be in SUBMITTED state to approve.");
+        }
+
+        issueRepo.approveCost(id, managerId);
+        return get(id, propertyId);
+    }
+
+    public IssueResponse rejectCost(UUID id, UUID propertyId, CostRejectRequest req) {
+        IssueRecord record = issueRepo.findByIdAndProperty(id, propertyId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found."));
+
+        if (record.costStatus() != CostStatus.SUBMITTED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Cost must be in SUBMITTED state to reject.");
+        }
+
+        issueRepo.rejectCost(id, req.reason());
         return get(id, propertyId);
     }
 

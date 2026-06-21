@@ -1,3 +1,5 @@
+export type CostStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
+
 export type IssueCategory =
   | 'PLUMBING'
   | 'ELECTRICAL'
@@ -37,7 +39,7 @@ export interface NoteSummary {
 
 export interface IssueSummary {
   id: string;
-  unitNumber: string;
+  unitNumber: string | null;
   title: string;
   category: IssueCategory;
   priority: IssuePriority;
@@ -59,6 +61,15 @@ export interface IssueDetail extends IssueSummary {
   notes: NoteSummary[];
   resolvedAt: string | null;
   photoUrl: string | null;
+  materialCost: number | null;
+  laborCost: number | null;
+  otherCost: number | null;
+  costNotes: string | null;
+  costStatus: CostStatus | null;
+  costSubmittedBy: string | null;
+  costApprovedBy: string | null;
+  costApprovedAt: string | null;
+  costRejectionReason: string | null;
 }
 
 export interface IssueCreatePayload {
@@ -72,8 +83,8 @@ export interface IssueCreatePayload {
 export interface IssueStatusPayload {
   status: IssueStatus;
   note?: string;
-  estimatedCost?: number;
-  actualCost?: number;
+  estimatedCost?: number | undefined;
+  actualCost?: number | undefined;
 }
 
 export interface IssueAssignPayload {

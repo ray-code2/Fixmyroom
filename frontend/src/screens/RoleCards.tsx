@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
 import type { ReactNode } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme/colors';
 
 export function InfoCard({ title, children }: { title: string; children: ReactNode }) {
@@ -31,34 +31,28 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     backgroundColor: colors.ivory,
     padding: 18,
-    marginTop: 14
+    marginTop: 14,
   },
   title: {
     color: colors.black,
     fontSize: 17,
     fontWeight: '700',
-    marginBottom: 12
+    marginBottom: 12,
   },
-  list: {
-    gap: 10
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10
-  },
+  list: { gap: 10 },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: colors.coffee,
-    marginTop: 7
+    marginTop: 7,
   },
   item: {
     flex: 1,
     color: colors.muted,
     fontSize: 14,
     lineHeight: 22,
-    fontWeight: '500'
-  }
+    fontWeight: '500',
+  },
 });

@@ -5,13 +5,18 @@ import com.fixmyroom.issue.IssueStatus;
 import com.fixmyroom.issue.IssueSummaryResponse;
 import com.fixmyroom.room.RoomRepository;
 import com.fixmyroom.room.RoomResponse;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -35,7 +40,7 @@ public class RoleDashboardController {
         List<RoomResponse> rooms = roomRepo.findActiveByProperty(propertyId)
                 .stream().map(RoomResponse::from).limit(5).toList();
 
-        int myReports = issueRepo.findByProperty(propertyId, null, null).stream()
+        int myReports = issueRepo.findByProperty(propertyId, null, null, null, null).stream()
                 .filter(i -> i.reportedById().equals(employeeId(jwt))).toList().size();
 
         return new StaffDashboardResponse(
@@ -50,8 +55,35 @@ public class RoleDashboardController {
 
     @GetMapping("/manager/dashboard")
     @PreAuthorize("hasRole('MANAGER')")
-    ManagerDashboardResponse managerDashboard(@AuthenticationPrincipal Jwt jwt) {
+    ManagerDashboardResponse managerDashboard(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @AuthenticationPrincipal Jwt jwt) {
         UUID propertyId = propertyId(jwt);
+        Instant fromInstant = from != null ? from.atStartOfDay(ZoneOffset.UTC).toInstant() : null;
+        Instant toInstant   = to   != null ? to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant() : null;
+
+        // When date range is active, derive counts from the filtered issue list
+        // so all metrics are consistent with the selected period
+        if (fromInstant != null || toInstant != null) {
+            List<IssueSummaryResponse> all = issueRepo
+                    .findByProperty(propertyId, null, null, fromInstant, toInstant)
+                    .stream().map(IssueSummaryResponse::from).toList();
+
+            int openIssues   = (int) all.stream().filter(i -> i.status() != IssueStatus.COMPLETED && i.status() != IssueStatus.CANCELLED).count();
+            int newIssues    = (int) all.stream().filter(i -> i.status() == IssueStatus.NEW).count();
+            int inProgress   = (int) all.stream().filter(i -> i.status() == IssueStatus.IN_PROGRESS).count();
+            int waitingParts = (int) all.stream().filter(i -> i.status() == IssueStatus.WAITING_PARTS).count();
+            int completed    = (int) all.stream().filter(i -> i.status() == IssueStatus.COMPLETED).count();
+
+            List<IssueSummaryResponse> urgent = all.stream()
+                    .filter(i -> i.status() != IssueStatus.COMPLETED && i.status() != IssueStatus.CANCELLED)
+                    .filter(i -> i.priority().name().equals("URGENT") || i.priority().name().equals("HIGH"))
+                    .limit(5).toList();
+
+            return new ManagerDashboardResponse(claim(jwt, "name"), claim(jwt, "hotel_name"),
+                    openIssues, newIssues, inProgress, waitingParts, completed, urgent);
+        }
 
         int openIssues      = issueRepo.countOpenByProperty(propertyId);
         int newIssues       = issueRepo.countByPropertyAndStatus(propertyId, IssueStatus.NEW);
@@ -59,7 +91,7 @@ public class RoleDashboardController {
         int waitingParts    = issueRepo.countByPropertyAndStatus(propertyId, IssueStatus.WAITING_PARTS);
         int completedTotal  = issueRepo.countByPropertyAndStatus(propertyId, IssueStatus.COMPLETED);
 
-        List<IssueSummaryResponse> urgent = issueRepo.findByProperty(propertyId, null, null)
+        List<IssueSummaryResponse> urgent = issueRepo.findByProperty(propertyId, null, null, null, null)
                 .stream()
                 .filter(i -> i.status() != IssueStatus.COMPLETED && i.status() != IssueStatus.CANCELLED)
                 .filter(i -> i.priority().name().equals("URGENT") || i.priority().name().equals("HIGH"))
@@ -85,7 +117,7 @@ public class RoleDashboardController {
         UUID propertyId  = propertyId(jwt);
         UUID techId      = employeeId(jwt);
 
-        List<IssueSummaryResponse> assigned = issueRepo.findByProperty(propertyId, null, techId)
+        List<IssueSummaryResponse> assigned = issueRepo.findByProperty(propertyId, null, techId, null, null)
                 .stream().map(IssueSummaryResponse::from).toList();
 
         int inProgress   = (int) assigned.stream()

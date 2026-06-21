@@ -5,19 +5,59 @@ import {
   Text,
   type PressableProps,
   type StyleProp,
-  type ViewStyle
+  type ViewStyle,
 } from 'react-native';
 import { colors } from '../theme/colors';
+
+export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'success' | 'destructive' | 'warning' | 'ghost';
 
 type PrimaryButtonProps = Omit<PressableProps, 'style'> & {
   label: string;
   loading?: boolean;
-  variant?: 'primary' | 'secondary' | 'danger';
+  variant?: ButtonVariant;
   style?: StyleProp<ViewStyle>;
 };
 
-export function PrimaryButton({ label, loading = false, variant = 'primary', disabled, style, ...props }: PrimaryButtonProps) {
+const BG: Record<ButtonVariant, string> = {
+  primary:     colors.coffee,
+  secondary:   colors.white,
+  danger:      '#FFF4EF',
+  success:     colors.success,
+  destructive: colors.danger,
+  warning:     colors.warning,
+  ghost:       'transparent',
+};
+const BORDER: Record<ButtonVariant, string> = {
+  primary:     colors.coffee,
+  secondary:   colors.line,
+  danger:      '#F2C9BD',
+  success:     colors.success,
+  destructive: colors.danger,
+  warning:     colors.warning,
+  ghost:       colors.line,
+};
+const LABEL_COLOR: Record<ButtonVariant, string> = {
+  primary:     colors.white,
+  secondary:   colors.coffee,
+  danger:      colors.danger,
+  success:     colors.white,
+  destructive: colors.white,
+  warning:     colors.white,
+  ghost:       colors.muted,
+};
+
+export function PrimaryButton({
+  label,
+  loading = false,
+  variant = 'primary',
+  disabled,
+  style,
+  ...props
+}: PrimaryButtonProps) {
   const isDisabled = disabled || loading;
+  const spinnerColor = variant === 'secondary' || variant === 'ghost' || variant === 'danger'
+    ? colors.coffee
+    : colors.white;
 
   return (
     <Pressable
@@ -25,15 +65,18 @@ export function PrimaryButton({ label, loading = false, variant = 'primary', dis
       disabled={isDisabled}
       style={({ pressed }) => [
         styles.base,
-        styles[variant],
-        isDisabled ? styles.disabled : null,
-        pressed && !isDisabled ? styles.pressed : null,
-        style
+        {
+          backgroundColor: BG[variant],
+          borderColor: BORDER[variant],
+        },
+        isDisabled && styles.disabled,
+        pressed && !isDisabled && styles.pressed,
+        style,
       ]}
       {...props}
     >
-      {loading ? <ActivityIndicator color={variant === 'primary' ? colors.white : colors.coffee} /> : null}
-      <Text style={[styles.label, variant === 'primary' ? styles.primaryLabel : styles.secondaryLabel]}>{label}</Text>
+      {loading && <ActivityIndicator color={spinnerColor} size="small" />}
+      <Text style={[styles.label, { color: LABEL_COLOR[variant] }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -47,34 +90,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     paddingHorizontal: 18,
-    borderWidth: 1
+    borderWidth: 1,
   },
-  primary: {
-    backgroundColor: colors.coffee,
-    borderColor: colors.coffee
-  },
-  secondary: {
-    backgroundColor: colors.white,
-    borderColor: colors.line
-  },
-  danger: {
-    backgroundColor: '#FFF4EF',
-    borderColor: '#F2C9BD'
-  },
-  disabled: {
-    opacity: 0.62
-  },
-  pressed: {
-    transform: [{ translateY: 1 }]
-  },
-  label: {
-    fontSize: 15,
-    fontWeight: '600'
-  },
-  primaryLabel: {
-    color: colors.white
-  },
-  secondaryLabel: {
-    color: colors.coffee
-  }
+  disabled: { opacity: 0.62 },
+  pressed:  { transform: [{ translateY: 1 }] },
+  label:    { fontSize: 15, fontWeight: '600' },
 });

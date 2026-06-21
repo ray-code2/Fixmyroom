@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,7 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { photoUrl } from '../api/issueApi';
+import { approveIssueCost, rejectIssueCost, photoUrl } from '../api/issueApi';
+import CostBreakdownForm from '../components/finance/CostBreakdownForm';
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -53,6 +55,9 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
   const [error, setError] = useState('');
   const [noteText, setNoteText] = useState('');
   const [noteSubmitting, setNoteSubmitting] = useState(false);
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectSubmitting, setRejectSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
@@ -80,6 +85,31 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
       setError('Could not add note.');
     } finally {
       setNoteSubmitting(false);
+    }
+  }
+
+  async function handleApprove() {
+    if (!issue) return;
+    try {
+      const updated = await approveIssueCost(issue.id, token);
+      setIssue(updated);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Approve failed.');
+    }
+  }
+
+  async function handleRejectConfirm() {
+    if (!issue || !rejectReason.trim()) return;
+    setRejectSubmitting(true);
+    try {
+      const updated = await rejectIssueCost(issue.id, rejectReason.trim(), token);
+      setIssue(updated);
+      setRejectModalVisible(false);
+      setRejectReason('');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Reject failed.');
+    } finally {
+      setRejectSubmitting(false);
     }
   }
 
@@ -175,43 +205,16 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
               )}
             </View>
 
-            {/* Cost */}
-            {(issue.estimatedCost !== null || issue.actualCost !== null) && (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>Maintenance cost (RM)</Text>
-                <View style={styles.costRow}>
-                  <View style={styles.costCell}>
-                    <Text style={styles.costCellLabel}>Estimate</Text>
-                    <Text style={styles.costCellValue}>
-                      {issue.estimatedCost !== null ? `RM ${issue.estimatedCost.toFixed(2)}` : '—'}
-                    </Text>
-                  </View>
-                  <View style={styles.costDivider} />
-                  <View style={styles.costCell}>
-                    <Text style={styles.costCellLabel}>Actual</Text>
-                    <Text style={styles.costCellValue}>
-                      {issue.actualCost !== null ? `RM ${issue.actualCost.toFixed(2)}` : '—'}
-                    </Text>
-                  </View>
-                  {issue.estimatedCost !== null && issue.actualCost !== null && (
-                    <>
-                      <View style={styles.costDivider} />
-                      <View style={styles.costCell}>
-                        <Text style={styles.costCellLabel}>Variance</Text>
-                        {(() => {
-                          const diff = issue.actualCost - issue.estimatedCost;
-                          const over = diff > 0;
-                          return (
-                            <Text style={[styles.costCellValue, { color: over ? colors.danger : colors.success }]}>
-                              {over ? '+' : ''}{`RM ${diff.toFixed(2)}`}
-                            </Text>
-                          );
-                        })()}
-                      </View>
-                    </>
-                  )}
-                </View>
-              </View>
+            {/* Cost breakdown — visible to assigned technician or manager */}
+            {(isManager || (employee.role === 'TECHNICIAN' && issue.assignedToId === employee.id)) && (
+              <CostBreakdownForm
+                issue={issue}
+                role={isManager ? 'MANAGER' : 'TECHNICIAN'}
+                token={token}
+                onSaved={setIssue}
+                onApprove={handleApprove}
+                onReject={() => setRejectModalVisible(true)}
+              />
             )}
 
             {/* Actions */}
@@ -278,6 +281,42 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
           </>
         )}
       </ScrollView>
+
+      {/* Reject reason modal */}
+      <Modal visible={rejectModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Reject Cost</Text>
+            <Text style={styles.modalSub}>Provide a reason for rejection (required).</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Rejection reason…"
+              value={rejectReason}
+              onChangeText={setRejectReason}
+              multiline
+              numberOfLines={3}
+              maxLength={280}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => { setRejectModalVisible(false); setRejectReason(''); }}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalConfirm, !rejectReason.trim() && styles.modalConfirmDisabled]}
+                onPress={handleRejectConfirm}
+                disabled={!rejectReason.trim() || rejectSubmitting}
+              >
+                {rejectSubmitting
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.modalConfirmText}>Reject</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -364,18 +403,51 @@ const styles = StyleSheet.create({
   },
   noteBtn: { marginTop: 4 },
 
-  costRow: {
-    flexDirection: 'row',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.white,
-    overflow: 'hidden',
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
   },
-  costCell: { flex: 1, padding: 12, gap: 4, alignItems: 'center' },
-  costDivider: { width: 1, backgroundColor: colors.line },
-  costCellLabel: { fontSize: 10, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4 },
-  costCellValue: { fontSize: 16, fontWeight: '700', color: colors.black },
+  modalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+    gap: 12,
+  },
+  modalTitle: { fontSize: 16, fontWeight: '700', color: '#2d1f18' },
+  modalSub: { fontSize: 13, color: '#6b5849' },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#e2d9d0',
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 14,
+    color: '#2d1f18',
+    minHeight: 70,
+    textAlignVertical: 'top',
+  },
+  modalActions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-end', marginTop: 4 },
+  modalCancel: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#f5f1ee',
+  },
+  modalCancelText: { fontWeight: '600', color: '#6b5849', fontSize: 14 },
+  modalConfirm: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#991b1b',
+    minWidth: 72,
+    alignItems: 'center',
+  },
+  modalConfirmDisabled: { backgroundColor: '#ddd' },
+  modalConfirmText: { fontWeight: '700', color: '#fff', fontSize: 14 },
 
   resolvedRow: {
     backgroundColor: colors.successBg,

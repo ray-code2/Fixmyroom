@@ -94,7 +94,7 @@ export function DashboardShell({
         <MobileHeader employee={employee} />
         <Text style={mobile.title}>{title}</Text>
         <Text style={mobile.subtitle}>{subtitle}</Text>
-        {children}
+        <View style={mobile.childrenGap}>{children}</View>
         <Text style={mobile.copyright}>© Fix My Room. All rights reserved.</Text>
       </ScrollView>
     </Screen>
@@ -169,6 +169,7 @@ const mobile = StyleSheet.create({
   profileInitials: { color: colors.white, fontSize: 14, fontWeight: '700' },
   title: { color: colors.black, fontSize: 28, lineHeight: 34, fontWeight: '700' },
   subtitle: { color: colors.muted, fontSize: 14, lineHeight: 22, marginTop: 8, marginBottom: 20 },
+  childrenGap: { gap: 16 },
   copyright: {
     color: colors.muted,
     fontSize: 10,

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { getDashboard } from '../api/dashboardApi';
+import DateRangeFilter, { ALL_TIME, type DateRange } from '../components/DateRangeFilter';
 import { IssueCard } from '../components/issue/IssueCard';
 import { MetricCard } from '../components/MetricCard';
 import { PrimaryButton } from '../components/PrimaryButton';
@@ -18,18 +19,19 @@ export function ManagerDashboardScreen({ token, employee }: { token: string; emp
   const [dashboard, setDashboard] = useState<ManagerDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [dateRange, setDateRange] = useState<DateRange>(ALL_TIME);
 
   const load = useCallback(async () => {
     setError('');
     setLoading(true);
     try {
-      setDashboard((await getDashboard('MANAGER', token)) as ManagerDashboard);
+      setDashboard((await getDashboard('MANAGER', token, dateRange.from, dateRange.to)) as ManagerDashboard);
     } catch {
       setError('Could not load manager dashboard.');
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, dateRange]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -41,6 +43,8 @@ export function ManagerDashboardScreen({ token, employee }: { token: string; emp
       refreshing={loading}
       onRefresh={load}
     >
+      <DateRangeFilter value={dateRange} onChange={setDateRange} />
+
       {loading && !dashboard ? <ActivityIndicator color={colors.coffee} /> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -67,38 +71,8 @@ export function ManagerDashboardScreen({ token, employee }: { token: string; emp
             </InfoCard>
           )}
 
-          {/* Desktop: 2×2 action grid; Mobile: stacked */}
-          {isDesktop ? (
-            <View style={styles.actionGrid}>
-              <View style={styles.actionRow}>
-                <PrimaryButton
-                  label="View All Issues"
-                  onPress={() => navigate({ name: 'IssueList' })}
-                  style={styles.actionBtn}
-                />
-                <PrimaryButton
-                  label="Manage Team"
-                  variant="secondary"
-                  onPress={() => navigate({ name: 'ManageTeam' })}
-                  style={styles.actionBtn}
-                />
-              </View>
-              <View style={styles.actionRow}>
-                <PrimaryButton
-                  label="Add Team Member"
-                  variant="secondary"
-                  onPress={() => navigate({ name: 'AddTeamMember' })}
-                  style={styles.actionBtn}
-                />
-                <PrimaryButton
-                  label="Upload Team via Excel"
-                  variant="secondary"
-                  onPress={() => navigate({ name: 'UploadTeam' })}
-                  style={styles.actionBtn}
-                />
-              </View>
-            </View>
-          ) : (
+          {/* Mobile only — desktop navigation is handled by the sidebar */}
+          {!isDesktop && (
             <>
               <PrimaryButton
                 label="View All Issues"
@@ -108,16 +82,6 @@ export function ManagerDashboardScreen({ token, employee }: { token: string; emp
                 label="Manage Team"
                 variant="secondary"
                 onPress={() => navigate({ name: 'ManageTeam' })}
-              />
-              <PrimaryButton
-                label="Add Team Member"
-                variant="secondary"
-                onPress={() => navigate({ name: 'AddTeamMember' })}
-              />
-              <PrimaryButton
-                label="Upload Team via Excel"
-                variant="secondary"
-                onPress={() => navigate({ name: 'UploadTeam' })}
               />
             </>
           )}
@@ -132,9 +96,4 @@ const styles = StyleSheet.create({
   metricsDesktop: { gap: 16 },
   error: { color: colors.danger, fontWeight: '600', marginBottom: 12 },
   urgentList: { gap: 8, marginTop: 4 },
-
-  // Desktop action grid — 2 buttons per row, max 560px total width
-  actionGrid: { gap: 10, maxWidth: 560 },
-  actionRow: { flexDirection: 'row', gap: 10 },
-  actionBtn: { flex: 1 },
 });
