@@ -1,5 +1,7 @@
 package com.fixmyroom.issue;
 
+import com.fixmyroom.auth.EmployeeRepository;
+import com.fixmyroom.email.EmailService;
 import com.fixmyroom.room.RoomRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -20,10 +22,15 @@ public class IssueService {
 
     private final IssueRepository issueRepo;
     private final RoomRepository roomRepo;
+    private final EmployeeRepository employeeRepo;
+    private final EmailService emailService;
 
-    public IssueService(IssueRepository issueRepo, RoomRepository roomRepo) {
+    public IssueService(IssueRepository issueRepo, RoomRepository roomRepo,
+                        EmployeeRepository employeeRepo, EmailService emailService) {
         this.issueRepo = issueRepo;
         this.roomRepo = roomRepo;
+        this.employeeRepo = employeeRepo;
+        this.emailService = emailService;
     }
 
     public IssueResponse create(IssueCreateRequest req, UUID reportedBy, UUID propertyId) {
@@ -36,9 +43,13 @@ public class IssueService {
         UUID id = issueRepo.create(propertyId, req.roomId(), req.title(),
                 req.description(), req.category(), req.priority(), reportedBy);
 
-        return issueRepo.findByIdAndProperty(id, propertyId)
+        IssueResponse created = issueRepo.findByIdAndProperty(id, propertyId)
                 .map(r -> IssueResponse.from(r, List.of()))
                 .orElseThrow();
+
+        List<String> managerEmails = employeeRepo.findManagerEmailsByHotel(propertyId);
+        emailService.sendNewIssueNotification(managerEmails, req.title(), created.unitNumber());
+        return created;
     }
 
     public IssueResponse uploadPhoto(UUID issueId, MultipartFile file, UUID propertyId) {
@@ -101,7 +112,10 @@ public class IssueService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found."));
 
         issueRepo.assignTechnician(id, req.technicianId(), managerId);
-        return get(id, propertyId);
+        IssueResponse assigned = get(id, propertyId);
+        employeeRepo.findActiveById(req.technicianId()).ifPresent(tech ->
+                emailService.sendAssignedNotification(tech.email(), assigned.title()));
+        return assigned;
     }
 
     public IssueResponse updateCost(UUID id, UUID propertyId, IssueCostRequest req,
@@ -145,7 +159,10 @@ public class IssueService {
         }
 
         issueRepo.submitCost(id);
-        return get(id, propertyId);
+        IssueResponse submitted = get(id, propertyId);
+        List<String> managerEmails = employeeRepo.findManagerEmailsByHotel(record.propertyId());
+        emailService.sendCostSubmittedNotification(managerEmails, submitted.title());
+        return submitted;
     }
 
     public IssueResponse approveCost(UUID id, UUID propertyId, UUID managerId) {
@@ -158,7 +175,12 @@ public class IssueService {
         }
 
         issueRepo.approveCost(id, managerId);
-        return get(id, propertyId);
+        IssueResponse approved = get(id, propertyId);
+        if (record.assignedToId() != null) {
+            employeeRepo.findActiveById(record.assignedToId()).ifPresent(tech ->
+                    emailService.sendCostApprovedNotification(tech.email(), approved.title()));
+        }
+        return approved;
     }
 
     public IssueResponse rejectCost(UUID id, UUID propertyId, CostRejectRequest req) {
@@ -171,7 +193,12 @@ public class IssueService {
         }
 
         issueRepo.rejectCost(id, req.reason());
-        return get(id, propertyId);
+        IssueResponse rejected = get(id, propertyId);
+        if (record.assignedToId() != null) {
+            employeeRepo.findActiveById(record.assignedToId()).ifPresent(tech ->
+                    emailService.sendCostRejectedNotification(tech.email(), rejected.title(), req.reason()));
+        }
+        return rejected;
     }
 
     public NoteResponse addNote(UUID id, UUID propertyId, NoteCreateRequest req, UUID authorId) {

@@ -61,7 +61,7 @@ export function getFinanceIssues(
   return apiRequest<FinanceRow[]>(`/api/finance/issues${query}`, { token });
 }
 
-export async function exportFinanceCsv(
+export async function exportFinanceExcel(
   token: string,
   from?: string | null,
   to?: string | null,
@@ -80,7 +80,7 @@ export async function exportFinanceCsv(
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `finance-report${from ? `-${from}` : ''}.csv`;
+  a.download = `finance-report${from ? `-${from}` : ''}.xlsx`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

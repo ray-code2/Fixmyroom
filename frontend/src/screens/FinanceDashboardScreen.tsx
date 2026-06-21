@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../auth/AuthContext';
 import { useNavigation } from '../navigation/NavigationContext';
-import { getFinanceSummary, getFinanceIssues, exportFinanceCsv } from '../api/financeApi';
+import { getFinanceSummary, getFinanceIssues, exportFinanceExcel } from '../api/financeApi';
 import type { FinanceSummary, FinanceRow } from '../api/financeApi';
 import type { CostStatus } from '../types/issue';
 import { formatIDR } from '../utils/currency';
@@ -71,7 +71,7 @@ export default function FinanceDashboardScreen() {
     if (!token || exporting) return;
     setExporting(true);
     try {
-      await exportFinanceCsv(token, dateRange.from, dateRange.to);
+      await exportFinanceExcel(token, dateRange.from, dateRange.to);
     } catch {
       setError('Could not export report. Please try again.');
     } finally {
@@ -104,7 +104,7 @@ export default function FinanceDashboardScreen() {
             disabled={exporting}
             activeOpacity={0.75}
           >
-            <Text style={styles.exportBtnText}>{exporting ? 'Exporting…' : '↓ Export CSV'}</Text>
+            <Text style={styles.exportBtnText}>{exporting ? 'Exporting…' : 'Export data'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -221,14 +221,12 @@ const styles = StyleSheet.create({
   pageTitle: { fontSize: 22, fontWeight: '800', color: '#2d1f18' },
   exportBtn: {
     borderRadius: 99,
-    borderWidth: 1,
-    borderColor: '#d4c4b7',
-    backgroundColor: '#fff',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    backgroundColor: '#6b5849',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   exportBtnDisabled: { opacity: 0.5 },
-  exportBtnText: { fontSize: 13, fontWeight: '600', color: '#6b5849' },
+  exportBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
   error: { color: '#c0392b', marginBottom: 12, fontSize: 13 },
 
   cardsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },

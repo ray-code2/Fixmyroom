@@ -1,5 +1,6 @@
 package com.fixmyroom.auth;
 
+import com.fixmyroom.email.EmailService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,6 +27,8 @@ public class AuthService {
     private final EmployeeRepository employeeRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtEncoder jwtEncoder;
+    private final PasswordResetStore passwordResetStore;
+    private final EmailService emailService;
     private final String issuer;
     private final Duration tokenTtl;
 
@@ -33,12 +36,16 @@ public class AuthService {
             EmployeeRepository employeeRepository,
             PasswordEncoder passwordEncoder,
             JwtEncoder jwtEncoder,
+            PasswordResetStore passwordResetStore,
+            EmailService emailService,
             @Value("${app.security.jwt.issuer:fmr-local}") String issuer,
             @Value("${app.security.jwt.ttl-minutes:480}") long ttlMinutes
     ) {
         this.employeeRepository = employeeRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtEncoder = jwtEncoder;
+        this.passwordResetStore = passwordResetStore;
+        this.emailService = emailService;
         this.issuer = issuer;
         this.tokenTtl = Duration.ofMinutes(ttlMinutes);
     }
@@ -117,6 +124,29 @@ public class AuthService {
 
         employeeRepository.updatePasswordHash(employeeId, passwordEncoder.encode(newPassword));
         log.info("Password reset for employeeId={} by hotelId={}", employeeId, hotelId);
+    }
+
+    public void forgotPassword(String email) {
+        employeeRepository.findActiveByEmail(email.trim().toLowerCase()).ifPresent(emp -> {
+            if (emp.role() == EmployeeRole.MANAGER) {
+                String token = passwordResetStore.createToken(emp.email());
+                emailService.sendPasswordResetEmail(emp.email(), token);
+            }
+        });
+    }
+
+    public void resetPassword(String token, String newPassword) {
+        String email = passwordResetStore.consumeToken(token);
+        if (email == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Reset link is invalid or has expired.");
+        }
+        EmployeeRecord emp = employeeRepository.findActiveByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found."));
+        if (emp.role() != EmployeeRole.MANAGER) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Password reset via email is only available for managers.");
+        }
+        employeeRepository.updatePasswordHash(emp.id(), passwordEncoder.encode(newPassword));
+        log.info("Manager password reset via token for email={}", email);
     }
 
     public EmployeeProfileResponse currentUser(Jwt jwt) {

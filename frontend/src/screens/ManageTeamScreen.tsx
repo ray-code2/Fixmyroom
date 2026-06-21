@@ -24,6 +24,7 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'ALL' | 'STAFF' | 'TECHNICIAN'>('ALL');
   const [dateRange, setDateRange] = useState<DateRange>(ALL_TIME);
   const [issues, setIssues] = useState<IssueSummary[]>([]);
@@ -89,6 +90,15 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
           View your staff and technicians. Tap Reset Password to set a new login for any team member.
         </Text>
 
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by name..."
+          placeholderTextColor={colors.muted}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          clearButtonMode="while-editing"
+        />
+
         <DateRangeFilter value={dateRange} onChange={setDateRange} />
 
         <View style={styles.filterRow}>
@@ -108,14 +118,14 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
         {loading && <ActivityIndicator color={colors.coffee} style={styles.loader} />}
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        {!loading && employees.filter((e) => filter === 'ALL' || e.role === filter).length === 0 && !error && (
+        {!loading && employees.filter((e) => (filter === 'ALL' || e.role === filter) && e.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && !error && (
           <View style={styles.emptyBox}>
             <Text style={styles.emptyText}>No team members yet.</Text>
             <Text style={styles.emptyHint}>Add staff or technicians from the dashboard.</Text>
           </View>
         )}
 
-        {employees.filter((emp) => filter === 'ALL' || emp.role === filter).map((emp) => {
+        {employees.filter((emp) => (filter === 'ALL' || emp.role === filter) && emp.name.toLowerCase().includes(searchQuery.toLowerCase())).map((emp) => {
           const isActive = activeId === emp.id;
           const roleStyle = ROLE_COLORS[emp.role] ?? { bg: colors.ivory, text: colors.muted };
           const reported  = issues.filter(i => i.reportedByName === emp.name).length;
@@ -201,6 +211,16 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
 
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 14, paddingBottom: 48 },
+  searchInput: {
+    height: 44,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    fontSize: 14,
+    color: colors.black,
+    backgroundColor: colors.white,
+  },
   backRow: { marginBottom: 4 },
   backText: { color: colors.coffee, fontWeight: '600', fontSize: 14 },
   title: { fontSize: 22, fontWeight: '700', color: colors.black },

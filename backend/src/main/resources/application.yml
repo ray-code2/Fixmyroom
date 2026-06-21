@@ -12,6 +12,17 @@ spring:
   h2:
     console:
       enabled: false
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 server:
   port: ${PORT:8080}
@@ -37,6 +48,9 @@ app:
     export-key: ${FMR_EXPORT_KEY:fmr-admin-2026}
   gemini:
     api-key: ${GEMINI_API_KEY:}
+  mail:
+    from: ${MAIL_FROM:noreply@fixmyroom.app}
+  base-url: ${APP_BASE_URL:http://localhost:8081}
 
 management:
   endpoints:

@@ -64,7 +64,9 @@ export function IssueListScreen({ token, employee }: Props) {
   let displayed = issues;
   if (searchText.trim()) {
     const q = searchText.toLowerCase();
-    displayed = displayed.filter(i => i.title.toLowerCase().includes(q));
+    displayed = displayed.filter(i =>
+      i.title.toLowerCase().includes(q) || i.id.toLowerCase().includes(q)
+    );
   }
   if (quickTab === 'OPEN') displayed = displayed.filter(i => OPEN_STATUSES.has(i.status));
   if (quickTab === 'DONE') displayed = displayed.filter(i => i.status === 'COMPLETED');
@@ -84,7 +86,7 @@ export function IssueListScreen({ token, employee }: Props) {
       {/* Search */}
       <TextInput
         style={styles.searchInput}
-        placeholder="Search issues..."
+        placeholder="Search by title or ticket ID..."
         placeholderTextColor={colors.muted}
         value={searchText}
         onChangeText={setSearchText}

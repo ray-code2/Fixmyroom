@@ -88,6 +88,16 @@ public class EmployeeRepository {
         );
     }
 
+    public List<String> findManagerEmailsByHotel(UUID hotelId) {
+        return jdbcTemplate.queryForList("""
+                SELECT email FROM employees
+                WHERE hotel_id = ? AND role = 'MANAGER' AND active = TRUE
+                """,
+                String.class,
+                hotelId
+        );
+    }
+
     public List<EmployeeListResponse> findTechniciansByProperty(UUID hotelId) {
         return jdbcTemplate.query("""
                 SELECT id, name FROM employees

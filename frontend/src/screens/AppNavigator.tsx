@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   ChevronLeft,
   ChevronRight,
@@ -18,6 +18,7 @@ import { Screen } from '../components/Screen';
 import { colors } from '../theme/colors';
 import type { EmployeeProfile } from '../types/auth';
 import { LoginScreen } from './LoginScreen';
+import { ResetPasswordScreen } from './ResetPasswordScreen';
 import { StaffDashboardScreen } from './StaffDashboardScreen';
 import { ManagerDashboardScreen } from './ManagerDashboardScreen';
 import { TechnicianDashboardScreen } from './TechnicianDashboardScreen';
@@ -239,6 +240,12 @@ export function AppNavigator() {
   }
 
   if (state.status === 'anonymous') {
+    if (Platform.OS === 'web') {
+      try {
+        const resetToken = new URLSearchParams(window.location.search).get('reset');
+        if (resetToken) return <ResetPasswordScreen token={resetToken} />;
+      } catch { /* ignore */ }
+    }
     return <LoginScreen />;
   }
 

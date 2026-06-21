@@ -1,6 +1,6 @@
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useRef, useState } from 'react';
-import { sendSupportMessage, type ChatTurn } from '../../api/supportApi';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useState } from 'react';
+import { API_BASE_URL } from '../../config/env';
 import { colors } from '../../theme/colors';
 import { AuthButton } from './AuthButton';
 import { AuthInput } from './AuthInput';
@@ -18,9 +18,6 @@ type AuthCardProps = {
   onLoginSubmit: () => void;
 };
 
-const INITIAL_GREETING =
-  "Hi! I'm FMR AI Support. I help hotel managers with login and password issues. What can I help you with today?";
-
 export function AuthCard({
   loginValues,
   error,
@@ -29,44 +26,37 @@ export function AuthCard({
   onLoginSubmit,
 }: AuthCardProps) {
   const [showForgot, setShowForgot] = useState(false);
-  const [showAiChat, setShowAiChat] = useState(false);
-  const [displayMessages, setDisplayMessages] = useState<ChatTurn[]>([
-    { role: 'assistant', content: INITIAL_GREETING },
-  ]);
-  const [apiHistory, setApiHistory] = useState<ChatTurn[]>([]);
-  const [chatInput, setChatInput] = useState('');
-  const [chatLoading, setChatLoading] = useState(false);
-  const chatScrollRef = useRef<ScrollView>(null);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetSending, setResetSending] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetError, setResetError] = useState('');
 
-  function openAiChat() {
-    setShowAiChat(true);
-    setDisplayMessages([{ role: 'assistant', content: INITIAL_GREETING }]);
-    setApiHistory([]);
-    setChatInput('');
+  function toggleForgot() {
+    setShowForgot((v) => !v);
+    setResetEmail('');
+    setResetSent(false);
+    setResetError('');
   }
 
-  async function sendChat() {
-    const msg = chatInput.trim();
-    if (!msg || chatLoading) return;
-
-    const userTurn: ChatTurn = { role: 'user', content: msg };
-    setChatInput('');
-    setDisplayMessages((prev) => [...prev, userTurn]);
-    setChatLoading(true);
-
+  async function handleSendReset() {
+    if (!resetEmail.trim() || resetSending) return;
+    setResetSending(true);
+    setResetError('');
     try {
-      const reply = await sendSupportMessage(msg, apiHistory);
-      const aiTurn: ChatTurn = { role: 'assistant', content: reply };
-      setDisplayMessages((prev) => [...prev, aiTurn]);
-      setApiHistory((prev) => [...prev, userTurn, aiTurn]);
-    } catch {
-      setDisplayMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: "Sorry, I'm having trouble connecting. Please try again." },
-      ]);
+      const res = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { message?: string };
+        throw new Error(data.message ?? 'Request failed. Please try again.');
+      }
+      setResetSent(true);
+    } catch (e) {
+      setResetError(e instanceof Error ? e.message : 'Could not send reset email.');
     } finally {
-      setChatLoading(false);
-      setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 80);
+      setResetSending(false);
     }
   }
 
@@ -110,10 +100,7 @@ export function AuthCard({
         />
         <Pressable
           accessibilityRole="button"
-          onPress={() => {
-            setShowForgot((v) => !v);
-            if (showForgot) setShowAiChat(false);
-          }}
+          onPress={toggleForgot}
           style={styles.forgot}
         >
           <Text style={styles.forgotText}>Forgot password?</Text>
@@ -129,83 +116,47 @@ export function AuthCard({
             Ask your manager to reset it via the FMR app under Manage Team.
           </Text>
 
-          <View style={styles.managerRow}>
+          <View style={styles.managerSection}>
             <Text style={styles.forgotBoxRow}>
               <Text style={styles.forgotBoxLabel}>Hotel Manager — </Text>
-              Chat with our AI support below.
+              Enter your email to receive a password reset link.
             </Text>
-            {!showAiChat && (
-              <Pressable
-                accessibilityRole="button"
-                style={styles.aiChatBtn}
-                onPress={openAiChat}
-              >
-                <Text style={styles.aiChatBtnText}>Open AI Support ↗</Text>
-              </Pressable>
+
+            {!resetSent ? (
+              <View style={styles.resetForm}>
+                <TextInput
+                  style={styles.resetInput}
+                  placeholder="manager@hotel.com"
+                  placeholderTextColor={colors.muted}
+                  value={resetEmail}
+                  onChangeText={setResetEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  editable={!resetSending}
+                />
+                {resetError ? <Text style={styles.resetError}>{resetError}</Text> : null}
+                <Pressable
+                  style={[
+                    styles.resetBtn,
+                    (!resetEmail.trim() || resetSending) && styles.resetBtnDisabled,
+                  ]}
+                  onPress={() => { void handleSendReset(); }}
+                  disabled={!resetEmail.trim() || resetSending}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.resetBtnText}>
+                    {resetSending ? 'Sending…' : 'Send reset link'}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={styles.resetSentBox}>
+                <Text style={styles.resetSentText}>
+                  ✓ Check your email — a reset link has been sent.
+                </Text>
+              </View>
             )}
           </View>
-
-          {showAiChat && (
-            <View style={styles.chatPanel}>
-              <View style={styles.chatHeader}>
-                <View style={styles.aiDot} />
-                <Text style={styles.chatTitle}>FMR AI Support</Text>
-                <Pressable onPress={() => setShowAiChat(false)} style={styles.closeBtn}>
-                  <Text style={styles.closeBtnText}>✕</Text>
-                </Pressable>
-              </View>
-
-              <ScrollView
-                ref={chatScrollRef}
-                style={styles.chatScroll}
-                contentContainerStyle={styles.chatMessages}
-                showsVerticalScrollIndicator={false}
-                onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: false })}
-              >
-                {displayMessages.map((msg, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.bubble,
-                      msg.role === 'user' ? styles.userBubble : styles.aiBubble,
-                    ]}
-                  >
-                    <Text
-                      style={msg.role === 'user' ? styles.userBubbleText : styles.aiBubbleText}
-                    >
-                      {msg.content}
-                    </Text>
-                  </View>
-                ))}
-                {chatLoading && (
-                  <View style={[styles.bubble, styles.aiBubble]}>
-                    <Text style={styles.aiBubbleText}>Typing…</Text>
-                  </View>
-                )}
-              </ScrollView>
-
-              <View style={styles.chatInputRow}>
-                <TextInput
-                  style={styles.chatInput}
-                  placeholder="Type a message…"
-                  placeholderTextColor={colors.muted}
-                  value={chatInput}
-                  onChangeText={setChatInput}
-                  onSubmitEditing={() => { void sendChat(); }}
-                  returnKeyType="send"
-                  editable={!chatLoading}
-                  multiline={false}
-                />
-                <Pressable
-                  style={({ pressed }) => [styles.sendBtn, pressed && styles.sendBtnPressed]}
-                  onPress={() => { void sendChat(); }}
-                  disabled={!chatInput.trim() || chatLoading}
-                >
-                  <Text style={styles.sendBtnText}>Send</Text>
-                </Pressable>
-              </View>
-            </View>
-          )}
         </View>
       )}
     </View>
@@ -248,72 +199,35 @@ const styles = StyleSheet.create({
   forgotBoxTitle: { fontSize: 13, fontWeight: '700', color: colors.black },
   forgotBoxRow: { fontSize: 13, color: colors.muted, lineHeight: 19 },
   forgotBoxLabel: { fontWeight: '600', color: colors.black },
-  managerRow: { gap: 6 },
-  aiChatBtn: {
-    alignSelf: 'flex-start',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#D8C6B5',
-    backgroundColor: colors.white,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  aiChatBtnText: { fontSize: 12, fontWeight: '700', color: colors.coffee },
+  managerSection: { gap: 8 },
 
-  chatPanel: {
-    borderRadius: 12,
+  resetForm: { gap: 8 },
+  resetInput: {
     borderWidth: 1,
     borderColor: colors.line,
-    backgroundColor: colors.white,
-    overflow: 'hidden',
-    marginTop: 4,
-  },
-  chatHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: colors.coffee,
-  },
-  aiDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#A8F0C2' },
-  chatTitle: { flex: 1, fontSize: 12, fontWeight: '700', color: '#fff' },
-  closeBtn: { padding: 4 },
-  closeBtnText: { fontSize: 12, color: '#fff', opacity: 0.8 },
-
-  chatScroll: { maxHeight: 200 },
-  chatMessages: { padding: 10, gap: 8 },
-  bubble: { maxWidth: '85%', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 },
-  aiBubble: { alignSelf: 'flex-start', backgroundColor: '#F3EDE6' },
-  userBubble: { alignSelf: 'flex-end', backgroundColor: colors.coffee },
-  aiBubbleText: { fontSize: 13, color: colors.black, lineHeight: 18 },
-  userBubbleText: { fontSize: 13, color: '#fff', lineHeight: 18 },
-
-  chatInputRow: {
-    flexDirection: 'row',
-    gap: 8,
-    padding: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
-  },
-  chatInput: {
-    flex: 1,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.line,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     fontSize: 13,
     color: colors.black,
-    backgroundColor: colors.ivory,
+    backgroundColor: colors.white,
   },
-  sendBtn: {
-    borderRadius: 8,
+  resetError: { fontSize: 12, color: colors.danger, fontWeight: '600' },
+  resetBtn: {
+    borderRadius: 10,
     backgroundColor: colors.coffee,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: 'center',
   },
-  sendBtnPressed: { opacity: 0.75 },
-  sendBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  resetBtnDisabled: { opacity: 0.45 },
+  resetBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+
+  resetSentBox: {
+    borderRadius: 10,
+    backgroundColor: '#E6F9ED',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  resetSentText: { fontSize: 13, fontWeight: '600', color: '#166534' },
 });
