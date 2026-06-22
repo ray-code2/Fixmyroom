@@ -203,6 +203,13 @@ public class DemoDataInitializer implements ApplicationRunner {
                 "Raymond Tjahyadi", EmployeeRole.MANAGER,
                 "+60123456789", "raymondtjahyadi00@gmail.com", now);
 
+        // If the manager email was already taken by a different account, SUN_MANAGER_ID won't exist
+        // and inserting staff that reference it would violate the FK constraint.
+        if (!employeeRepo.employeeExists(SUN_MANAGER_ID)) {
+            log.info("Sunniress seed skipped — manager email already registered under a different account ID");
+            return;
+        }
+
         // Staff
         seedEmployee(SUN_STAFF_1, SUN_HOTEL_ID, SUN_MANAGER_ID,
                 "Ahmad Farid", EmployeeRole.STAFF,
