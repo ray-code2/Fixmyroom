@@ -1,7 +1,7 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { bulkUploadEmployees, type BulkUploadRowError } from '../api/employeeApi';
+import { bulkUploadEmployees, downloadTeamTemplate, type BulkUploadRowError } from '../api/employeeApi';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { Screen } from '../components/Screen';
 import { useNavigation } from '../navigation/NavigationContext';
@@ -20,6 +20,19 @@ type UploadState =
 export function UploadTeamScreen({ token, employee: _ }: { token: string; employee: EmployeeProfile }) {
   const { goBack } = useNavigation();
   const [state, setState] = useState<UploadState>({ status: 'idle' });
+  const [downloading, setDownloading] = useState(false);
+
+  async function handleDownload() {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      await downloadTeamTemplate(token);
+    } catch {
+      // silently ignore — browser already shows an error if download fails
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   async function pickFile() {
     const result = await DocumentPicker.getDocumentAsync({
@@ -59,7 +72,17 @@ export function UploadTeamScreen({ token, employee: _ }: { token: string; employ
         <TouchableOpacity onPress={goBack} style={styles.backRow}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Upload Team via Excel</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>Upload Team via Excel</Text>
+          <TouchableOpacity
+            style={[styles.downloadBtn, downloading && styles.downloadBtnDisabled]}
+            onPress={() => void handleDownload()}
+            disabled={downloading}
+            activeOpacity={0.75}
+          >
+            <Text style={styles.downloadBtnText}>{downloading ? 'Downloading…' : 'Download Excel Template'}</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.subtitle}>
           Add multiple staff and technicians at once by uploading an Excel file (.xlsx).
         </Text>
@@ -176,8 +199,17 @@ const styles = StyleSheet.create({
   container: { padding: 20, gap: 16, paddingBottom: 48 },
   backRow: { marginBottom: 4 },
   backText: { color: colors.coffee, fontWeight: '600', fontSize: 14 },
-  title: { fontSize: 22, fontWeight: '700', color: colors.black },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  title: { flex: 1, fontSize: 22, fontWeight: '700', color: colors.black },
   subtitle: { fontSize: 14, color: colors.muted, lineHeight: 20 },
+  downloadBtn: {
+    borderRadius: 99,
+    backgroundColor: colors.coffee,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  downloadBtnDisabled: { opacity: 0.5 },
+  downloadBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
 
   templateCard: {
     backgroundColor: '#FAFAF8',

@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { API_BASE_URL } from '../config/env';
 import { apiRequest } from './http';
 
@@ -48,13 +49,38 @@ export async function addEmployee(payload: AddEmployeePayload, token: string): P
 export type BulkUploadRowError = { row: number; email: string; reason: string };
 export type BulkUploadResult = { added: number; failed: number; errors: BulkUploadRowError[] };
 
+export async function downloadTeamTemplate(token: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}/api/employees/template`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error('Download failed');
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'team-upload-template.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export async function bulkUploadEmployees(
   fileUri: string,
   fileName: string,
   token: string,
 ): Promise<BulkUploadResult> {
   const formData = new FormData();
-  formData.append('file', { uri: fileUri, name: fileName, type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' } as unknown as Blob);
+  if (Platform.OS === 'web') {
+    // On web the picker returns a blob: URL — fetch it into a real Blob so the
+    // browser sends a proper multipart file part named "file".
+    const blob = await (await fetch(fileUri)).blob();
+    formData.append('file', blob, fileName);
+  } else {
+    // React Native native expects the { uri, name, type } shape.
+    formData.append('file', { uri: fileUri, name: fileName, type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' } as unknown as Blob);
+  }
 
   const response = await fetch(`${API_BASE_URL}/api/employees/bulk`, {
     method: 'POST',

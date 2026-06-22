@@ -78,6 +78,12 @@ public class SupportChatService {
         body.put("systemInstruction", Map.of("parts", List.of(Map.of("text", SYSTEM_PROMPT))));
         body.put("contents", contents);
         body.put("generationConfig", Map.of("maxOutputTokens", 512));
+        body.put("safetySettings", List.of(
+                Map.of("category", "HARM_CATEGORY_HARASSMENT",        "threshold", "BLOCK_ONLY_HIGH"),
+                Map.of("category", "HARM_CATEGORY_HATE_SPEECH",       "threshold", "BLOCK_ONLY_HIGH"),
+                Map.of("category", "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold", "BLOCK_ONLY_HIGH"),
+                Map.of("category", "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold", "BLOCK_ONLY_HIGH")
+        ));
 
         try {
             GeminiApiResponse response = restClient.post()
@@ -92,6 +98,9 @@ public class SupportChatService {
             }
 
             GeminiApiResponse.Candidate candidate = response.candidates().get(0);
+            if ("SAFETY".equals(candidate.finishReason()) || "BLOCKED".equals(candidate.finishReason())) {
+                return "I'm sorry, I can't respond to that. Please ask about FMR login or password help.";
+            }
             if (candidate.content() == null
                     || candidate.content().parts() == null
                     || candidate.content().parts().isEmpty()) {
