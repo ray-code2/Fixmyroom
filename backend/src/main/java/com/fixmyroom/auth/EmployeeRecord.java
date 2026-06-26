@@ -4,9 +4,9 @@ import java.util.UUID;
 
 public record EmployeeRecord(
         UUID id,
-        UUID hotelId,
+        UUID businessId,
         UUID managerId,
-        String hotelName,
+        String businessName,
         String name,
         EmployeeRole role,
         String languagePreference,

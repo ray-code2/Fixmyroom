@@ -56,7 +56,7 @@ export function ProfileScreen({ employee }: Props) {
 
         {/* Info card */}
         <View style={styles.card}>
-          <InfoRow label="Property" value={employee.hotelName} />
+          <InfoRow label="Property" value={employee.businessName} />
           <View style={styles.divider} />
           <InfoRow label="Email" value={employee.email} />
           {employee.phone ? (

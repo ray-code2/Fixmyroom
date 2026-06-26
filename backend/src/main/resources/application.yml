@@ -8,7 +8,9 @@ spring:
     driver-class-name: ${FMR_DATASOURCE_DRIVER:org.h2.Driver}
   sql:
     init:
-      mode: always
+      mode: never   # schema is now owned by Liquibase (see db/changelog); schema.sql is reused as the baseline only
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
   h2:
     console:
       enabled: false
@@ -29,7 +31,7 @@ server:
   servlet:
     multipart:
       max-file-size: 10MB
-      max-request-size: 12MB
+      max-request-size: 33MB
   error:
     include-stacktrace: never
 
@@ -64,6 +66,7 @@ logging:
   level:
     root: INFO
     com.fixmyroom: INFO
+    com.fixmyroom.email: DEBUG
   logback:
     rollingpolicy:
       max-file-size: 10MB

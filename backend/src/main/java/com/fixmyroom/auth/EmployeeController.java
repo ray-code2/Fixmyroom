@@ -1,5 +1,6 @@
 package com.fixmyroom.auth;
 
+import com.fixmyroom.common.JwtTenant;
 import jakarta.validation.Valid;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.DataFormatter;
@@ -51,15 +52,15 @@ public class EmployeeController {
     @GetMapping
     @PreAuthorize("hasRole('MANAGER')")
     List<EmployeeTeamMember> listAllEmployees(@AuthenticationPrincipal Jwt jwt) {
-        UUID hotelId = UUID.fromString(jwt.getClaimAsString("hotel_id"));
-        return employeeRepository.findAllByHotel(hotelId);
+        UUID businessId = JwtTenant.businessId(jwt);
+        return employeeRepository.findAllByBusiness(businessId);
     }
 
     @GetMapping("/technicians")
     @PreAuthorize("hasRole('MANAGER')")
     List<EmployeeListResponse> listTechnicians(@AuthenticationPrincipal Jwt jwt) {
-        UUID hotelId = UUID.fromString(jwt.getClaimAsString("hotel_id"));
-        return employeeRepository.findTechniciansByProperty(hotelId);
+        UUID businessId = JwtTenant.businessId(jwt);
+        return employeeRepository.findTechniciansByProperty(businessId);
     }
 
     @PatchMapping("/{id}/password")
@@ -69,17 +70,17 @@ public class EmployeeController {
             @PathVariable UUID id,
             @Valid @RequestBody ResetPasswordRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        UUID hotelId = UUID.fromString(jwt.getClaimAsString("hotel_id"));
-        authService.resetEmployeePassword(id, hotelId, request.newPassword());
+        UUID businessId = JwtTenant.businessId(jwt);
+        authService.resetEmployeePassword(id, businessId, request.newPassword());
     }
 
     @PostMapping
     @PreAuthorize("hasRole('MANAGER')")
     @ResponseStatus(HttpStatus.CREATED)
     void addEmployee(@Valid @RequestBody AddEmployeeRequest request, @AuthenticationPrincipal Jwt jwt) {
-        UUID hotelId = UUID.fromString(jwt.getClaimAsString("hotel_id"));
+        UUID businessId = JwtTenant.businessId(jwt);
         UUID managerId = UUID.fromString(jwt.getSubject());
-        authService.addEmployee(request, hotelId, managerId);
+        authService.addEmployee(request, businessId, managerId);
     }
 
     @GetMapping("/template")
@@ -132,7 +133,7 @@ public class EmployeeController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is empty.");
         }
 
-        UUID hotelId = UUID.fromString(jwt.getClaimAsString("hotel_id"));
+        UUID businessId = JwtTenant.businessId(jwt);
         UUID managerId = UUID.fromString(jwt.getSubject());
 
         DataFormatter fmt = new DataFormatter();
@@ -184,7 +185,7 @@ public class EmployeeController {
                                     email.trim().toLowerCase(),
                                     password,
                                     phone.isBlank() ? null : phone.trim()),
-                            hotelId, managerId);
+                            businessId, managerId);
                     added++;
                 } catch (Exception e) {
                     errors.add(new BulkUploadResult.RowError(rowIdx + 1, email, e.getMessage()));

@@ -13,7 +13,9 @@ export type AppScreen =
   | { name: 'ManageTeam' }
   | { name: 'UploadTeam' }
   | { name: 'UpdateStatus'; issueId: string; currentStatus: string }
-  | { name: 'Finance' };
+  | { name: 'Finance' }
+  | { name: 'ManageRooms' }
+  | { name: 'RoomDetail'; roomId: string };
 
 type StackEntry = AppScreen;
 

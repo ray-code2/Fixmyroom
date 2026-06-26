@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  DoorOpen,
   FilePlus,
   LayoutDashboard,
   TrendingUp,
@@ -29,6 +30,8 @@ import { UpdateStatusScreen } from './UpdateStatusScreen';
 import { AssignTechnicianScreen } from './AssignTechnicianScreen';
 import { AddTeamMemberScreen } from './AddTeamMemberScreen';
 import { ManageTeamScreen } from './ManageTeamScreen';
+import { ManageRoomsScreen } from './ManageRoomsScreen';
+import { RoomDetailScreen } from './RoomDetailScreen';
 import { UploadTeamScreen } from './UploadTeamScreen';
 import { ProfileScreen } from './ProfileScreen';
 import FinanceDashboardScreen from './FinanceDashboardScreen';
@@ -42,12 +45,13 @@ function getNavItems(role: string): NavItem[] {
   switch (role) {
     case 'MANAGER':
       return [
-        { label: 'Dashboard',   screen: { name: 'Dashboard' },     icon: LayoutDashboard },
-        { label: 'All Issues',  screen: { name: 'IssueList' },     icon: ClipboardList },
-        { label: 'Finance',     screen: { name: 'Finance' },       icon: TrendingUp },
-        { label: 'Manage Team', screen: { name: 'ManageTeam' },    icon: Users },
-        { label: 'Add Member',  screen: { name: 'AddTeamMember' }, icon: UserPlus },
-        { label: 'Upload Team', screen: { name: 'UploadTeam' },    icon: Upload },
+        { label: 'Dashboard',    screen: { name: 'Dashboard' },     icon: LayoutDashboard },
+        { label: 'All Issues',   screen: { name: 'IssueList' },     icon: ClipboardList },
+        { label: 'Finance',      screen: { name: 'Finance' },       icon: TrendingUp },
+        { label: 'Manage Rooms', screen: { name: 'ManageRooms' },   icon: DoorOpen },
+        { label: 'Manage Team',  screen: { name: 'ManageTeam' },    icon: Users },
+        { label: 'Add Member',   screen: { name: 'AddTeamMember' }, icon: UserPlus },
+        { label: 'Upload Team',  screen: { name: 'UploadTeam' },    icon: Upload },
       ];
     case 'STAFF':
       return [
@@ -106,7 +110,7 @@ function AppSidebar({ employee, onCollapse }: { employee: EmployeeProfile; onCol
         {/* Hotel chip */}
         <View style={sb.hotelChip}>
           <Text style={sb.hotelChipLabel}>BUSINESS</Text>
-          <Text style={sb.hotelChipText} numberOfLines={2}>{employee.hotelName}</Text>
+          <Text style={sb.hotelChipText} numberOfLines={2}>{employee.businessName}</Text>
         </View>
 
         {/* Nav */}
@@ -201,6 +205,10 @@ function AppRouter({ token, employee }: { token: string; employee: EmployeeProfi
         );
       case 'Finance':
         return <FinanceDashboardScreen />;
+      case 'ManageRooms':
+        return <ManageRoomsScreen token={token} employee={employee} />;
+      case 'RoomDetail':
+        return <RoomDetailScreen roomId={current.roomId} token={token} employee={employee} />;
       case 'Dashboard':
       default:
         if (employee.role === 'MANAGER') return <ManagerDashboardScreen token={token} employee={employee} />;

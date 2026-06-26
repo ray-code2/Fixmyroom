@@ -17,6 +17,8 @@ export type ManagerDashboard = {
   inProgress: number;
   waitingParts: number;
   completedTotal: number;
+  avgResolutionHours: number | null;
+  costThisMonth: number | null;
   urgentIssues: IssueSummary[];
 };
 

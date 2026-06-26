@@ -21,7 +21,8 @@ public record FinanceRowResponse(
         CostStatus costStatus,
         String costRejectionReason,
         Instant createdAt,
-        Instant costApprovedAt
+        Instant costApprovedAt,
+        Double hoursOutOfService
 ) {
     public static FinanceRowResponse from(IssueRecord r) {
         BigDecimal actualTotal = null;
@@ -36,7 +37,7 @@ public record FinanceRowResponse(
                 r.id(), r.title(), r.unitNumber(), r.assignedToName(),
                 r.estimatedCost(), r.materialCost(), r.laborCost(), r.otherCost(),
                 actualTotal, r.costNotes(), r.costStatus(), r.costRejectionReason(),
-                r.createdAt(), r.costApprovedAt()
+                r.createdAt(), r.costApprovedAt(), r.hoursOutOfService()
         );
     }
 }

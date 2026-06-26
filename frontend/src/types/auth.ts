@@ -2,9 +2,9 @@ export type EmployeeRole = 'STAFF' | 'MANAGER' | 'TECHNICIAN';
 
 export type EmployeeProfile = {
   id: string;
-  hotelId: string;
+  businessId: string;
   managerId: string | null;
-  hotelName: string;
+  businessName: string;
   name: string;
   role: EmployeeRole;
   languagePreference: string;

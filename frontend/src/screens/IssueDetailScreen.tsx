@@ -58,6 +58,7 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
   const [rejectModalVisible, setRejectModalVisible] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError('');
@@ -120,6 +121,13 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
 
   const isDone = issue?.status === 'COMPLETED' || issue?.status === 'CANCELLED';
 
+  // Prefer the new multi-photo list; fall back to the legacy single photoUrl.
+  const gallery = issue
+    ? (issue.photoUrls && issue.photoUrls.length > 0
+        ? issue.photoUrls
+        : (issue.photoUrl ? [issue.photoUrl] : []))
+    : [];
+
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
@@ -133,13 +141,23 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
 
         {issue && (
           <>
-            {/* Photo */}
-            {issue.photoUrl ? (
-              <Image
-                source={{ uri: photoUrl(issue.photoUrl) }}
-                style={styles.photo}
-                resizeMode="contain"
-              />
+            {/* Photos */}
+            {gallery.length === 1 ? (
+              <TouchableOpacity activeOpacity={0.9} onPress={() => setLightbox(gallery[0]!)}>
+                <Image source={{ uri: photoUrl(gallery[0]!) }} style={styles.photo} resizeMode="cover" />
+              </TouchableOpacity>
+            ) : gallery.length > 1 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.galleryRow}
+              >
+                {gallery.map(url => (
+                  <TouchableOpacity key={url} activeOpacity={0.9} onPress={() => setLightbox(url)}>
+                    <Image source={{ uri: photoUrl(url) }} style={styles.galleryThumb} resizeMode="cover" />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             ) : null}
 
             {/* Title & meta */}
@@ -317,6 +335,16 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
           </View>
         </View>
       </Modal>
+
+      {/* Photo lightbox */}
+      <Modal visible={!!lightbox} transparent animationType="fade" onRequestClose={() => setLightbox(null)}>
+        <TouchableOpacity style={styles.lightboxOverlay} activeOpacity={1} onPress={() => setLightbox(null)}>
+          {lightbox && (
+            <Image source={{ uri: photoUrl(lightbox) }} style={styles.lightboxImage} resizeMode="contain" />
+          )}
+          <Text style={styles.lightboxHint}>Tap anywhere to close</Text>
+        </TouchableOpacity>
+      </Modal>
     </Screen>
   );
 }
@@ -461,4 +489,20 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: '#000',
   },
+  galleryRow: { gap: 10, paddingVertical: 2 },
+  galleryThumb: {
+    width: 150,
+    aspectRatio: 4 / 3,
+    borderRadius: 12,
+    backgroundColor: '#000',
+  },
+  lightboxOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  lightboxImage: { width: '100%', height: '80%' },
+  lightboxHint: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 16 },
 });

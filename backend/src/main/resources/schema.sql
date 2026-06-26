@@ -110,3 +110,14 @@ ALTER TABLE issues ADD COLUMN IF NOT EXISTS cost_submitted_by UUID;
 ALTER TABLE issues ADD COLUMN IF NOT EXISTS cost_approved_by UUID;
 ALTER TABLE issues ADD COLUMN IF NOT EXISTS cost_approved_at TIMESTAMP WITH TIME ZONE;
 ALTER TABLE issues ADD COLUMN IF NOT EXISTS cost_rejection_reason VARCHAR(280);
+
+-- Up to 3 photos per issue (URLs only — files live on disk under /uploads)
+CREATE TABLE IF NOT EXISTS issue_photos (
+    id UUID PRIMARY KEY,
+    issue_id UUID NOT NULL REFERENCES issues(id),
+    url VARCHAR(500) NOT NULL,
+    position INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_issue_photos_issue_id ON issue_photos(issue_id);

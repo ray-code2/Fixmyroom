@@ -1,5 +1,6 @@
 package com.fixmyroom.issue;
 
+import com.fixmyroom.common.JwtTenant;
 import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -38,6 +39,14 @@ public class IssueController {
                                      @RequestParam("file") MultipartFile file,
                                      @AuthenticationPrincipal Jwt jwt) {
         return issueService.uploadPhoto(id, file, propertyId(jwt));
+    }
+
+    @PostMapping(value = "/{id}/photos", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('STAFF')")
+    public IssueResponse uploadPhotos(@PathVariable UUID id,
+                                      @RequestParam("files") List<MultipartFile> files,
+                                      @AuthenticationPrincipal Jwt jwt) {
+        return issueService.uploadPhotos(id, files, propertyId(jwt));
     }
 
     @GetMapping
@@ -107,7 +116,7 @@ public class IssueController {
     }
 
     private UUID propertyId(Jwt jwt) {
-        return UUID.fromString(jwt.getClaimAsString("hotel_id"));
+        return JwtTenant.businessId(jwt);
     }
 
     private UUID employeeId(Jwt jwt) {

@@ -96,6 +96,41 @@ export async function uploadIssuePhoto(
   return payload as IssueDetail;
 }
 
+type UploadPhoto = File | { uri: string; name: string; type: string };
+
+export async function uploadIssuePhotos(
+  issueId: string,
+  photos: UploadPhoto[],
+  token: string
+): Promise<IssueDetail> {
+  const formData = new FormData();
+  for (const photo of photos) {
+    if (photo instanceof File) {
+      formData.append('files', photo);
+    } else {
+      formData.append('files', { uri: photo.uri, name: photo.name, type: photo.type } as unknown as Blob);
+    }
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/issues/${issueId}/photos`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  const text = await response.text();
+  const payload = text ? (JSON.parse(text) as unknown) : null;
+
+  if (!response.ok) {
+    const msg = payload && typeof payload === 'object' && 'message' in payload
+      ? String((payload as { message: unknown }).message)
+      : 'Photo upload failed.';
+    throw new ApiClientError(response.status, msg);
+  }
+
+  return payload as IssueDetail;
+}
+
 export function photoUrl(relativePath: string): string {
   return `${API_BASE_URL}${relativePath}`;
 }

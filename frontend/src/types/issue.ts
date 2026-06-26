@@ -41,6 +41,7 @@ export interface IssueSummary {
   id: string;
   unitNumber: string | null;
   title: string;
+  description: string | null;
   category: IssueCategory;
   priority: IssuePriority;
   status: IssueStatus;
@@ -48,8 +49,10 @@ export interface IssueSummary {
   assignedToName: string | null;
   estimatedCost: number | null;
   actualCost: number | null;
+  photoUrl: string | null;
   createdAt: string;
   updatedAt: string;
+  hoursOutOfService: number | null;
 }
 
 export interface IssueDetail extends IssueSummary {
@@ -61,6 +64,7 @@ export interface IssueDetail extends IssueSummary {
   notes: NoteSummary[];
   resolvedAt: string | null;
   photoUrl: string | null;
+  photoUrls: string[] | null;
   materialCost: number | null;
   laborCost: number | null;
   otherCost: number | null;

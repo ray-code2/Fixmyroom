@@ -24,7 +24,7 @@ public class IssueRepository {
     }
 
     private static final String ISSUE_SELECT =
-            "SELECT i.id, i.hotel_id, i.room_id, r.room_number, i.title, i.description, " +
+            "SELECT i.id, i.business_id, i.room_id, r.room_number, i.title, i.description, " +
             "i.category, i.priority, i.status, " +
             "i.reported_by, rep.name AS reported_by_name, " +
             "i.assigned_to, tech.name AS assigned_to_name, " +
@@ -42,7 +42,7 @@ public class IssueRepository {
     public List<IssueRecord> findByProperty(UUID propertyId, @Nullable IssueStatus status,
                                              @Nullable UUID assignedTo,
                                              @Nullable Instant from, @Nullable Instant to) {
-        StringBuilder sql = new StringBuilder(ISSUE_SELECT).append("WHERE i.hotel_id = ?");
+        StringBuilder sql = new StringBuilder(ISSUE_SELECT).append("WHERE i.business_id = ?");
         List<Object> params = new ArrayList<>();
         params.add(propertyId);
 
@@ -69,7 +69,7 @@ public class IssueRepository {
 
     public Optional<IssueRecord> findByIdAndProperty(UUID id, UUID propertyId) {
         List<IssueRecord> rows = jdbc.query(
-                ISSUE_SELECT + "WHERE i.id = ? AND i.hotel_id = ?",
+                ISSUE_SELECT + "WHERE i.id = ? AND i.business_id = ?",
                 this::mapIssue, id, propertyId
         );
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
@@ -86,7 +86,7 @@ public class IssueRepository {
 
     public int countByPropertyAndStatus(UUID propertyId, IssueStatus status) {
         Integer count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM issues WHERE hotel_id = ? AND status = ?",
+                "SELECT COUNT(*) FROM issues WHERE business_id = ? AND status = ?",
                 Integer.class, propertyId, status.name()
         );
         return count == null ? 0 : count;
@@ -94,7 +94,7 @@ public class IssueRepository {
 
     public int countByPropertyAndAssignedTo(UUID propertyId, UUID technicianId) {
         Integer count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM issues WHERE hotel_id = ? AND assigned_to = ? " +
+                "SELECT COUNT(*) FROM issues WHERE business_id = ? AND assigned_to = ? " +
                 "AND status NOT IN ('COMPLETED','CANCELLED')",
                 Integer.class, propertyId, technicianId
         );
@@ -103,7 +103,7 @@ public class IssueRepository {
 
     public int countOpenByProperty(UUID propertyId) {
         Integer count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM issues WHERE hotel_id = ? AND status NOT IN ('COMPLETED','CANCELLED')",
+                "SELECT COUNT(*) FROM issues WHERE business_id = ? AND status NOT IN ('COMPLETED','CANCELLED')",
                 Integer.class, propertyId
         );
         return count == null ? 0 : count;
@@ -111,7 +111,7 @@ public class IssueRepository {
 
     public int countByCostStatus(UUID propertyId, CostStatus costStatus) {
         Integer count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM issues WHERE hotel_id = ? AND cost_status = ?",
+                "SELECT COUNT(*) FROM issues WHERE business_id = ? AND cost_status = ?",
                 Integer.class, propertyId, costStatus.name()
         );
         return count == null ? 0 : count;
@@ -119,7 +119,7 @@ public class IssueRepository {
 
     // Finance summary aggregates
     public FinanceAggregates getFinanceAggregates(UUID propertyId, @Nullable Instant from, @Nullable Instant to) {
-        StringBuilder where = new StringBuilder("WHERE hotel_id = ?");
+        StringBuilder where = new StringBuilder("WHERE business_id = ?");
         List<Object> params = new ArrayList<>();
         params.add(propertyId);
         if (from != null) { where.append(" AND created_at >= ?"); params.add(Timestamp.from(from)); }
@@ -149,10 +149,42 @@ public class IssueRepository {
         );
     }
 
+    public Double getAvgResolutionHours(UUID propertyId, @Nullable Instant from, @Nullable Instant to) {
+        StringBuilder sql = new StringBuilder(
+                "SELECT created_at, resolved_at FROM issues " +
+                "WHERE business_id = ? AND status = 'COMPLETED' AND resolved_at IS NOT NULL");
+        List<Object> params = new ArrayList<>();
+        params.add(propertyId);
+        if (from != null) { sql.append(" AND created_at >= ?"); params.add(Timestamp.from(from)); }
+        if (to != null)   { sql.append(" AND created_at < ?");  params.add(Timestamp.from(to)); }
+
+        List<Double> hours = jdbc.query(sql.toString(), (rs, n) -> {
+            long ms = rs.getTimestamp("resolved_at").getTime() - rs.getTimestamp("created_at").getTime();
+            return ms / 3_600_000.0;
+        }, params.toArray());
+
+        return hours.isEmpty() ? null : hours.stream().mapToDouble(d -> d).average().getAsDouble();
+    }
+
+    public BigDecimal getApprovedCostTotal(UUID propertyId, @Nullable Instant from, @Nullable Instant to) {
+        StringBuilder sql = new StringBuilder(
+                "SELECT COALESCE(SUM(CASE WHEN material_cost IS NOT NULL " +
+                "THEN material_cost + COALESCE(labor_cost,0) + COALESCE(other_cost,0) " +
+                "ELSE COALESCE(actual_cost,0) END), 0) AS total " +
+                "FROM issues WHERE business_id = ? AND cost_status = 'APPROVED'");
+        List<Object> params = new ArrayList<>();
+        params.add(propertyId);
+        if (from != null) { sql.append(" AND created_at >= ?"); params.add(Timestamp.from(from)); }
+        if (to != null)   { sql.append(" AND created_at < ?");  params.add(Timestamp.from(to)); }
+
+        BigDecimal result = jdbc.queryForObject(sql.toString(), BigDecimal.class, params.toArray());
+        return result != null ? result : BigDecimal.ZERO;
+    }
+
     // Finance table rows (all issues with cost data for manager)
     public List<IssueRecord> findForFinanceTable(UUID propertyId, @Nullable CostStatus costStatus,
                                                   @Nullable Instant from, @Nullable Instant to) {
-        StringBuilder sql = new StringBuilder(ISSUE_SELECT).append("WHERE i.hotel_id = ?");
+        StringBuilder sql = new StringBuilder(ISSUE_SELECT).append("WHERE i.business_id = ?");
         List<Object> params = new ArrayList<>();
         params.add(propertyId);
         if (costStatus != null) {
@@ -173,10 +205,11 @@ public class IssueRepository {
                        IssueCategory category, IssuePriority priority, UUID reportedBy) {
         UUID id = UUID.randomUUID();
         Instant now = Instant.now();
+        // Dual-write business_id + hotel_id during the rename transition window.
         jdbc.update(
-                "INSERT INTO issues (id, hotel_id, room_id, title, description, category, priority, " +
-                "status, reported_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'NEW', ?, ?, ?)",
-                id, propertyId, roomId, title, description, category.name(), priority.name(),
+                "INSERT INTO issues (id, business_id, hotel_id, room_id, title, description, category, priority, " +
+                "status, reported_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'NEW', ?, ?, ?)",
+                id, propertyId, propertyId, roomId, title, description, category.name(), priority.name(),
                 reportedBy, Timestamp.from(now), Timestamp.from(now)
         );
         addStatusHistory(id, reportedBy, null, IssueStatus.NEW, null);
@@ -187,6 +220,26 @@ public class IssueRepository {
         jdbc.update(
                 "UPDATE issues SET photo_url = ?, updated_at = ? WHERE id = ?",
                 photoUrl, Timestamp.from(Instant.now()), issueId
+        );
+    }
+
+    // --- Issue photos (1–3 per issue) ---
+
+    public void addPhoto(UUID issueId, String url, int position) {
+        jdbc.update(
+                "INSERT INTO issue_photos (id, issue_id, url, position, created_at) VALUES (?, ?, ?, ?, ?)",
+                UUID.randomUUID(), issueId, url, position, Timestamp.from(Instant.now())
+        );
+    }
+
+    public void deletePhotosByIssue(UUID issueId) {
+        jdbc.update("DELETE FROM issue_photos WHERE issue_id = ?", issueId);
+    }
+
+    public List<String> findPhotoUrlsByIssue(UUID issueId) {
+        return jdbc.query(
+                "SELECT url FROM issue_photos WHERE issue_id = ? ORDER BY position ASC",
+                (rs, n) -> rs.getString("url"), issueId
         );
     }
 
@@ -279,11 +332,12 @@ public class IssueRepository {
                           UUID reportedBy, UUID assignedTo, Instant createdAt) {
         Timestamp resolvedAt = (status == IssueStatus.COMPLETED || status == IssueStatus.CANCELLED)
                 ? Timestamp.from(createdAt.plusSeconds(3600)) : null;
+        // Dual-write business_id + hotel_id during the rename transition window.
         jdbc.update(
-                "INSERT INTO issues (id, hotel_id, room_id, title, description, category, priority, " +
+                "INSERT INTO issues (id, business_id, hotel_id, room_id, title, description, category, priority, " +
                 "status, reported_by, assigned_to, created_at, updated_at, resolved_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                id, propertyId, roomId, title, description, category.name(), priority.name(),
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                id, propertyId, propertyId, roomId, title, description, category.name(), priority.name(),
                 status.name(), reportedBy, assignedTo,
                 Timestamp.from(createdAt), Timestamp.from(createdAt), resolvedAt
         );
@@ -328,7 +382,7 @@ public class IssueRepository {
         Timestamp costApprovedAt = rs.getTimestamp("cost_approved_at");
         return new IssueRecord(
                 UUID.fromString(rs.getString("id")),
-                UUID.fromString(rs.getString("hotel_id")),
+                UUID.fromString(rs.getString("business_id")),
                 roomIdStr == null ? null : UUID.fromString(roomIdStr),
                 rs.getString("room_number"),
                 rs.getString("title"),

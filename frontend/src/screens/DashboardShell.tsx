@@ -26,7 +26,7 @@ function MobileHeader({ employee }: { employee: EmployeeProfile }) {
           <Text style={mobile.brandText}>FMR</Text>
         </View>
         <View style={mobile.headerText}>
-          <Text style={mobile.hotel} numberOfLines={1}>{employee.hotelName}</Text>
+          <Text style={mobile.hotel} numberOfLines={1}>{employee.businessName}</Text>
           <Text style={mobile.employee}>
             {employee.role.charAt(0) + employee.role.slice(1).toLowerCase()}
           </Text>

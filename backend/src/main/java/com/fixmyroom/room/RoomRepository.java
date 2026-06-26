@@ -22,16 +22,16 @@ public class RoomRepository {
 
     public List<RoomRecord> findActiveByProperty(UUID propertyId) {
         return jdbc.query(
-                "SELECT id, hotel_id, room_number, floor, room_type, active, created_at " +
-                "FROM rooms WHERE hotel_id = ? AND active = TRUE ORDER BY room_number",
+                "SELECT id, business_id, room_number, floor, room_type, active, created_at " +
+                "FROM rooms WHERE business_id = ? AND active = TRUE ORDER BY room_number",
                 this::map, propertyId
         );
     }
 
     public Optional<RoomRecord> findByIdAndProperty(UUID id, UUID propertyId) {
         List<RoomRecord> rows = jdbc.query(
-                "SELECT id, hotel_id, room_number, floor, room_type, active, created_at " +
-                "FROM rooms WHERE id = ? AND hotel_id = ?",
+                "SELECT id, business_id, room_number, floor, room_type, active, created_at " +
+                "FROM rooms WHERE id = ? AND business_id = ?",
                 this::map, id, propertyId
         );
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
@@ -39,9 +39,21 @@ public class RoomRepository {
 
     public boolean existsByProperty(UUID propertyId) {
         Integer count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM rooms WHERE hotel_id = ?", Integer.class, propertyId
+                "SELECT COUNT(*) FROM rooms WHERE business_id = ?", Integer.class, propertyId
         );
         return count != null && count > 0;
+    }
+
+    public boolean existsByPropertyAndRoomNumber(UUID propertyId, String roomNumber) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM rooms WHERE business_id = ? AND room_number = ? AND active = TRUE",
+                Integer.class, propertyId, roomNumber
+        );
+        return count != null && count > 0;
+    }
+
+    public void deactivateRoom(UUID id) {
+        jdbc.update("UPDATE rooms SET active = FALSE WHERE id = ?", id);
     }
 
     public UUID createRoom(UUID propertyId, String unitNumber, String floor, String unitType) {
@@ -50,10 +62,11 @@ public class RoomRepository {
 
     /** Used by seed/demo initializers that need stable, pre-defined IDs. */
     public UUID createRoom(UUID id, UUID propertyId, String unitNumber, String floor, String unitType) {
+        // Dual-write business_id + hotel_id during the rename transition window.
         jdbc.update(
-                "INSERT INTO rooms (id, hotel_id, room_number, floor, room_type, active, created_at) " +
-                "VALUES (?, ?, ?, ?, ?, TRUE, ?)",
-                id, propertyId, unitNumber, floor, unitType, Timestamp.from(Instant.now())
+                "INSERT INTO rooms (id, business_id, hotel_id, room_number, floor, room_type, active, created_at) " +
+                "VALUES (?, ?, ?, ?, ?, ?, TRUE, ?)",
+                id, propertyId, propertyId, unitNumber, floor, unitType, Timestamp.from(Instant.now())
         );
         return id;
     }
@@ -61,7 +74,7 @@ public class RoomRepository {
     private RoomRecord map(ResultSet rs, int row) throws SQLException {
         return new RoomRecord(
                 UUID.fromString(rs.getString("id")),
-                UUID.fromString(rs.getString("hotel_id")),
+                UUID.fromString(rs.getString("business_id")),
                 rs.getString("room_number"),
                 rs.getString("floor"),
                 rs.getString("room_type"),

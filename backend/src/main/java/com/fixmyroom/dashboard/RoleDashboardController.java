@@ -1,5 +1,8 @@
 package com.fixmyroom.dashboard;
 
+import com.fixmyroom.common.JwtTenant;
+import com.fixmyroom.issue.CostStatus;
+import com.fixmyroom.issue.IssueRecord;
 import com.fixmyroom.issue.IssueRepository;
 import com.fixmyroom.issue.IssueStatus;
 import com.fixmyroom.issue.IssueSummaryResponse;
@@ -14,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -45,7 +49,7 @@ public class RoleDashboardController {
 
         return new StaffDashboardResponse(
                 claim(jwt, "name"),
-                claim(jwt, "hotel_name"),
+                JwtTenant.businessName(jwt),
                 rooms,
                 myReports,
                 List.of("Choose unit", "Describe the problem", "Add a photo (optional)", "Submit — manager is notified instantly"),
@@ -63,12 +67,11 @@ public class RoleDashboardController {
         Instant fromInstant = from != null ? from.atStartOfDay(ZoneOffset.UTC).toInstant() : null;
         Instant toInstant   = to   != null ? to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant() : null;
 
-        // When date range is active, derive counts from the filtered issue list
-        // so all metrics are consistent with the selected period
+        // When date range is active, derive all metrics from the same filtered set
+        // so every card describes the same population.
         if (fromInstant != null || toInstant != null) {
-            List<IssueSummaryResponse> all = issueRepo
-                    .findByProperty(propertyId, null, null, fromInstant, toInstant)
-                    .stream().map(IssueSummaryResponse::from).toList();
+            List<IssueRecord> rawAll = issueRepo.findByProperty(propertyId, null, null, fromInstant, toInstant);
+            List<IssueSummaryResponse> all = rawAll.stream().map(IssueSummaryResponse::from).toList();
 
             int openIssues   = (int) all.stream().filter(i -> i.status() != IssueStatus.COMPLETED && i.status() != IssueStatus.CANCELLED).count();
             int newIssues    = (int) all.stream().filter(i -> i.status() == IssueStatus.NEW).count();
@@ -76,13 +79,26 @@ public class RoleDashboardController {
             int waitingParts = (int) all.stream().filter(i -> i.status() == IssueStatus.WAITING_PARTS).count();
             int completed    = (int) all.stream().filter(i -> i.status() == IssueStatus.COMPLETED).count();
 
+            double[] resolvedHours = rawAll.stream()
+                    .filter(r -> r.status() == IssueStatus.COMPLETED && r.resolvedAt() != null)
+                    .mapToDouble(r -> (r.resolvedAt().toEpochMilli() - r.createdAt().toEpochMilli()) / 3_600_000.0)
+                    .toArray();
+            Double avgResolutionHours = resolvedHours.length == 0 ? null
+                    : java.util.Arrays.stream(resolvedHours).average().getAsDouble();
+
+            BigDecimal costThisMonth = rawAll.stream()
+                    .filter(r -> r.costStatus() == CostStatus.APPROVED)
+                    .map(r -> computeActualCost(r))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
             List<IssueSummaryResponse> urgent = all.stream()
                     .filter(i -> i.status() != IssueStatus.COMPLETED && i.status() != IssueStatus.CANCELLED)
                     .filter(i -> i.priority().name().equals("URGENT") || i.priority().name().equals("HIGH"))
                     .limit(5).toList();
 
-            return new ManagerDashboardResponse(claim(jwt, "name"), claim(jwt, "hotel_name"),
-                    openIssues, newIssues, inProgress, waitingParts, completed, urgent);
+            return new ManagerDashboardResponse(claim(jwt, "name"), JwtTenant.businessName(jwt),
+                    openIssues, newIssues, inProgress, waitingParts, completed,
+                    avgResolutionHours, costThisMonth, urgent);
         }
 
         int openIssues      = issueRepo.countOpenByProperty(propertyId);
@@ -90,6 +106,14 @@ public class RoleDashboardController {
         int inProgress      = issueRepo.countByPropertyAndStatus(propertyId, IssueStatus.IN_PROGRESS);
         int waitingParts    = issueRepo.countByPropertyAndStatus(propertyId, IssueStatus.WAITING_PARTS);
         int completedTotal  = issueRepo.countByPropertyAndStatus(propertyId, IssueStatus.COMPLETED);
+
+        Double avgResolutionHours = issueRepo.getAvgResolutionHours(propertyId, null, null);
+
+        // Default cost window = current calendar month when no date filter is active.
+        LocalDate monthStart = LocalDate.now(ZoneOffset.UTC).withDayOfMonth(1);
+        Instant monthFrom = monthStart.atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant monthTo   = monthStart.plusMonths(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        BigDecimal costThisMonth = issueRepo.getApprovedCostTotal(propertyId, monthFrom, monthTo);
 
         List<IssueSummaryResponse> urgent = issueRepo.findByProperty(propertyId, null, null, null, null)
                 .stream()
@@ -101,13 +125,9 @@ public class RoleDashboardController {
 
         return new ManagerDashboardResponse(
                 claim(jwt, "name"),
-                claim(jwt, "hotel_name"),
-                openIssues,
-                newIssues,
-                inProgress,
-                waitingParts,
-                completedTotal,
-                urgent
+                JwtTenant.businessName(jwt),
+                openIssues, newIssues, inProgress, waitingParts, completedTotal,
+                avgResolutionHours, costThisMonth, urgent
         );
     }
 
@@ -127,7 +147,7 @@ public class RoleDashboardController {
 
         return new TechnicianDashboardResponse(
                 claim(jwt, "name"),
-                claim(jwt, "hotel_name"),
+                JwtTenant.businessName(jwt),
                 assigned.size(),
                 inProgress,
                 waitingParts,
@@ -140,7 +160,7 @@ public class RoleDashboardController {
     }
 
     private UUID propertyId(Jwt jwt) {
-        return UUID.fromString(jwt.getClaimAsString("hotel_id"));
+        return JwtTenant.businessId(jwt);
     }
 
     private UUID employeeId(Jwt jwt) {
@@ -150,6 +170,15 @@ public class RoleDashboardController {
     private String claim(Jwt jwt, String name) {
         Object v = jwt.getClaims().get(name);
         return v == null ? "" : v.toString();
+    }
+
+    private static BigDecimal computeActualCost(IssueRecord r) {
+        if (r.materialCost() != null) {
+            return r.materialCost()
+                    .add(r.laborCost()  != null ? r.laborCost()  : BigDecimal.ZERO)
+                    .add(r.otherCost()  != null ? r.otherCost()  : BigDecimal.ZERO);
+        }
+        return r.actualCost() != null ? r.actualCost() : BigDecimal.ZERO;
     }
 
     // --- Response records ---
@@ -171,6 +200,8 @@ public class RoleDashboardController {
             int inProgress,
             int waitingParts,
             int completedTotal,
+            Double avgResolutionHours,
+            BigDecimal costThisMonth,
             List<IssueSummaryResponse> urgentIssues
     ) {}
 

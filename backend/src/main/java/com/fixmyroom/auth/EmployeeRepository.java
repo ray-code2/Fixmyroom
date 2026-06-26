@@ -22,25 +22,25 @@ public class EmployeeRepository {
 
     public Optional<EmployeeRecord> findActiveByEmail(String email) {
         return findOne("""
-                SELECT e.*, h.name AS hotel_name
+                SELECT e.*, b.name AS business_name
                 FROM employees e
-                JOIN hotels h ON h.id = e.hotel_id
+                JOIN businesses b ON b.id = e.business_id
                 WHERE LOWER(e.email) = LOWER(?) AND e.active = TRUE
                 """, email);
     }
 
     public Optional<EmployeeRecord> findActiveById(UUID id) {
         return findOne("""
-                SELECT e.*, h.name AS hotel_name
+                SELECT e.*, b.name AS business_name
                 FROM employees e
-                JOIN hotels h ON h.id = e.hotel_id
+                JOIN businesses b ON b.id = e.business_id
                 WHERE e.id = ? AND e.active = TRUE
                 """, id);
     }
 
-    public boolean hotelExists(UUID id) {
+    public boolean businessExists(UUID id) {
         Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM hotels WHERE id = ?",
+                "SELECT COUNT(*) FROM businesses WHERE id = ?",
                 Integer.class,
                 id
         );
@@ -56,10 +56,10 @@ public class EmployeeRepository {
         return count != null && count > 0;
     }
 
-    public List<EmployeeTeamMember> findAllByHotel(UUID hotelId) {
+    public List<EmployeeTeamMember> findAllByBusiness(UUID businessId) {
         return jdbcTemplate.query("""
                 SELECT id, name, role, email FROM employees
-                WHERE hotel_id = ? AND role != 'MANAGER' AND active = TRUE
+                WHERE business_id = ? AND role != 'MANAGER' AND active = TRUE
                 ORDER BY role, name
                 """,
                 (rs, row) -> new EmployeeTeamMember(
@@ -68,17 +68,17 @@ public class EmployeeRepository {
                         rs.getString("role"),
                         rs.getString("email")
                 ),
-                hotelId
+                businessId
         );
     }
 
-    public Optional<EmployeeRecord> findByIdAndHotel(UUID id, UUID hotelId) {
+    public Optional<EmployeeRecord> findByIdAndBusiness(UUID id, UUID businessId) {
         return findOne("""
-                SELECT e.*, h.name AS hotel_name
+                SELECT e.*, b.name AS business_name
                 FROM employees e
-                JOIN hotels h ON h.id = e.hotel_id
-                WHERE e.id = ? AND e.hotel_id = ? AND e.active = TRUE
-                """, id, hotelId);
+                JOIN businesses b ON b.id = e.business_id
+                WHERE e.id = ? AND e.business_id = ? AND e.active = TRUE
+                """, id, businessId);
     }
 
     public void updatePasswordHash(UUID id, String hash) {
@@ -88,33 +88,33 @@ public class EmployeeRepository {
         );
     }
 
-    public List<String> findManagerEmailsByHotel(UUID hotelId) {
+    public List<String> findManagerEmailsByBusiness(UUID businessId) {
         return jdbcTemplate.queryForList("""
                 SELECT email FROM employees
-                WHERE hotel_id = ? AND role = 'MANAGER' AND active = TRUE
+                WHERE business_id = ? AND role = 'MANAGER' AND active = TRUE
                 """,
                 String.class,
-                hotelId
+                businessId
         );
     }
 
-    public List<EmployeeListResponse> findTechniciansByProperty(UUID hotelId) {
+    public List<EmployeeListResponse> findTechniciansByProperty(UUID businessId) {
         return jdbcTemplate.query("""
                 SELECT id, name FROM employees
-                WHERE hotel_id = ? AND role = 'TECHNICIAN' AND active = TRUE
+                WHERE business_id = ? AND role = 'TECHNICIAN' AND active = TRUE
                 ORDER BY name
                 """,
                 (rs, row) -> new EmployeeListResponse(
                         rs.getObject("id", UUID.class),
                         rs.getString("name")
                 ),
-                hotelId
+                businessId
         );
     }
 
-    public void createHotel(UUID id, String name, String address, String timezone, Instant createdAt) {
+    public void createBusiness(UUID id, String name, String address, String timezone, Instant createdAt) {
         jdbcTemplate.update("""
-                        INSERT INTO hotels (id, name, address, timezone, created_at)
+                        INSERT INTO businesses (id, name, address, timezone, created_at)
                         VALUES (?, ?, ?, ?, ?)
                         """,
                 id,
@@ -127,7 +127,7 @@ public class EmployeeRepository {
 
     public void createEmployee(
             UUID id,
-            UUID hotelId,
+            UUID businessId,
             UUID managerId,
             String name,
             EmployeeRole role,
@@ -137,15 +137,18 @@ public class EmployeeRepository {
             String passwordHash,
             Instant createdAt
     ) {
+        // Dual-write business_id + hotel_id during the rename transition window so a
+        // rollback to pre-rename code (which still reads hotel_id) keeps working.
         jdbcTemplate.update("""
                         INSERT INTO employees (
-                            id, hotel_id, manager_id, name, role, language_preference, phone,
+                            id, business_id, hotel_id, manager_id, name, role, language_preference, phone,
                             email, password_hash, active, created_at, updated_at
                         )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)
                         """,
                 id,
-                hotelId,
+                businessId,
+                businessId,
                 managerId,
                 name,
                 role.name(),
@@ -169,9 +172,9 @@ public class EmployeeRepository {
     private EmployeeRecord mapEmployee(ResultSet resultSet, int rowNumber) throws SQLException {
         return new EmployeeRecord(
                 resultSet.getObject("id", UUID.class),
-                resultSet.getObject("hotel_id", UUID.class),
+                resultSet.getObject("business_id", UUID.class),
                 resultSet.getObject("manager_id", UUID.class),
-                resultSet.getString("hotel_name"),
+                resultSet.getString("business_name"),
                 resultSet.getString("name"),
                 EmployeeRole.valueOf(resultSet.getString("role")),
                 resultSet.getString("language_preference"),

@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+            http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+    <!--
+        Baseline. Reuses the existing schema.sql, which is fully idempotent
+        (CREATE TABLE IF NOT EXISTS / ADD COLUMN IF NOT EXISTS), so it is safe on
+        BOTH a fresh database (creates everything) and an existing database created
+        by the old spring.sql.init path (every statement no-ops, data preserved).
+        Liquibase records it as run once; schema.sql is never executed again.
+    -->
+    <changeSet id="001-baseline-schema" author="fmr">
+        <comment>Baseline current schema from schema.sql (idempotent)</comment>
+        <sqlFile path="schema.sql" relativeToChangelogFile="false"
+                 splitStatements="true" stripComments="true"/>
+        <rollback>
+            <sql>
+                DROP TABLE IF EXISTS issue_photos;
+                DROP TABLE IF EXISTS issue_status_history;
+                DROP TABLE IF EXISTS issue_notes;
+                DROP TABLE IF EXISTS issues;
+                DROP TABLE IF EXISTS rooms;
+                DROP TABLE IF EXISTS employees;
+                DROP TABLE IF EXISTS hotels;
+                DROP TABLE IF EXISTS landing_leads;
+            </sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+        Tenancy rename: hotel_id -> business_id, hotels -> businesses.
+        Done additively in stages so data is never lost mid-migration and the change
+        is reversible. hotel_id is intentionally KEPT for the dual-claim transition
+        window; dropping it is a separate later changeset, only after all clients
+        have been re-issued tokens.
+    -->
+    <changeSet id="002-rename-hotels-to-businesses" author="fmr">
+        <comment>Rename the tenant/org table hotels -> businesses</comment>
+        <sql>ALTER TABLE hotels RENAME TO businesses;</sql>
+        <rollback>ALTER TABLE businesses RENAME TO hotels;</rollback>
+    </changeSet>
+
+    <changeSet id="003-add-business-id-columns" author="fmr">
+        <comment>Add nullable business_id alongside hotel_id (auto-rollback drops them)</comment>
+        <addColumn tableName="employees">
+            <column name="business_id" type="UUID"/>
+        </addColumn>
+        <addColumn tableName="rooms">
+            <column name="business_id" type="UUID"/>
+        </addColumn>
+        <addColumn tableName="issues">
+            <column name="business_id" type="UUID"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="004-backfill-business-id" author="fmr">
+        <comment>Backfill business_id from hotel_id; no data is dropped</comment>
+        <sql>UPDATE employees SET business_id = hotel_id WHERE business_id IS NULL;</sql>
+        <sql>UPDATE rooms     SET business_id = hotel_id WHERE business_id IS NULL;</sql>
+        <sql>UPDATE issues    SET business_id = hotel_id WHERE business_id IS NULL;</sql>
+        <rollback/> <!-- reverted by dropping the columns in 003's rollback -->
+    </changeSet>
+
+    <changeSet id="005-business-id-constraints" author="fmr">
+        <comment>Make business_id NOT NULL, FK to businesses(id), and indexed</comment>
+        <addNotNullConstraint tableName="employees" columnName="business_id" columnDataType="UUID"/>
+        <addNotNullConstraint tableName="rooms"     columnName="business_id" columnDataType="UUID"/>
+        <addNotNullConstraint tableName="issues"    columnName="business_id" columnDataType="UUID"/>
+
+        <addForeignKeyConstraint baseTableName="employees" baseColumnNames="business_id"
+                                 constraintName="fk_employees_business"
+                                 referencedTableName="businesses" referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="rooms" baseColumnNames="business_id"
+                                 constraintName="fk_rooms_business"
+                                 referencedTableName="businesses" referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="issues" baseColumnNames="business_id"
+                                 constraintName="fk_issues_business"
+                                 referencedTableName="businesses" referencedColumnNames="id"/>
+
+        <createIndex tableName="employees" indexName="idx_employees_business_id">
+            <column name="business_id"/>
+        </createIndex>
+        <createIndex tableName="rooms" indexName="idx_rooms_business_id">
+            <column name="business_id"/>
+        </createIndex>
+        <createIndex tableName="issues" indexName="idx_issues_business_id">
+            <column name="business_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,6 +1,7 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { IssueSummary } from '../../types/issue';
 import { CATEGORY_LABELS } from '../../types/issue';
+import { photoUrl } from '../../api/issueApi';
 import { colors } from '../../theme/colors';
 import { PriorityBadge } from './PriorityBadge';
 import { StatusBadge } from './StatusBadge';
@@ -26,12 +27,26 @@ interface Props {
 export function IssueCard({ issue, onPress }: Props) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
-      <View style={styles.row}>
-        <Text style={styles.unit}>Unit {issue.unitNumber}</Text>
-        <Text style={styles.category}>{CATEGORY_LABELS[issue.category]}</Text>
-      </View>
+      <View style={styles.headerRow}>
+        {issue.photoUrl ? (
+          <Image source={{ uri: photoUrl(issue.photoUrl) }} style={styles.thumb} resizeMode="cover" />
+        ) : (
+          <View style={[styles.thumb, styles.thumbPlaceholder]}>
+            <Text style={styles.thumbPlaceholderText}>{CATEGORY_LABELS[issue.category].charAt(0)}</Text>
+          </View>
+        )}
 
-      <Text style={styles.title} numberOfLines={2}>{issue.title}</Text>
+        <View style={styles.headerText}>
+          <View style={styles.row}>
+            <Text style={styles.unit}>{issue.unitNumber ? `Unit ${issue.unitNumber}` : 'No unit'}</Text>
+            <Text style={styles.category}>{CATEGORY_LABELS[issue.category]}</Text>
+          </View>
+          <Text style={styles.title} numberOfLines={2}>{issue.title}</Text>
+          {issue.description ? (
+            <Text style={styles.description} numberOfLines={2}>{issue.description}</Text>
+          ) : null}
+        </View>
+      </View>
 
       <View style={styles.badges}>
         <StatusBadge status={issue.status} />
@@ -57,7 +72,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#EDE8E3',
     padding: 16,
-    gap: 8,
+    gap: 10,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'flex-start',
+  },
+  thumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: '#F0EBE5',
+  },
+  thumbPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbPlaceholderText: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.coffee,
+  },
+  headerText: {
+    flex: 1,
+    gap: 4,
+  },
+  description: {
+    fontSize: 13,
+    color: colors.muted,
+    lineHeight: 18,
   },
   row: {
     flexDirection: 'row',

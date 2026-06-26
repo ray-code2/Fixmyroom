@@ -20,6 +20,8 @@ import java.util.UUID;
 @Service
 public class IssueService {
 
+    private static final int MAX_PHOTOS = 3;
+
     private final IssueRepository issueRepo;
     private final RoomRepository roomRepo;
     private final EmployeeRepository employeeRepo;
@@ -47,32 +49,60 @@ public class IssueService {
                 .map(r -> IssueResponse.from(r, List.of()))
                 .orElseThrow();
 
-        List<String> managerEmails = employeeRepo.findManagerEmailsByHotel(propertyId);
+        List<String> managerEmails = employeeRepo.findManagerEmailsByBusiness(propertyId);
         emailService.sendNewIssueNotification(managerEmails, req.title(), created.unitNumber());
         return created;
     }
 
+    /** Single-photo upload kept for backwards compatibility — delegates to the multi-photo path. */
     public IssueResponse uploadPhoto(UUID issueId, MultipartFile file, UUID propertyId) {
+        return uploadPhotos(issueId, List.of(file), propertyId);
+    }
+
+    /** Attach 1–3 photos to an issue. Replaces any photos already attached. */
+    public IssueResponse uploadPhotos(UUID issueId, List<MultipartFile> files, UUID propertyId) {
         issueRepo.findByIdAndProperty(issueId, propertyId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found."));
 
-        String contentType = file.getContentType();
-        if (contentType == null || (!contentType.equals("image/jpeg") && !contentType.equals("image/png"))) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only JPEG and PNG images are accepted.");
+        if (files == null || files.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No photos provided.");
+        }
+        if (files.size() > MAX_PHOTOS) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "You can attach at most " + MAX_PHOTOS + " photos.");
         }
 
-        String extension = contentType.equals("image/jpeg") ? ".jpg" : ".png";
-        String filename = issueId.toString() + extension;
+        // Validate every file up front so a bad upload never wipes existing photos.
+        for (MultipartFile file : files) {
+            String contentType = file.getContentType();
+            if (contentType == null || (!contentType.equals("image/jpeg") && !contentType.equals("image/png"))) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only JPEG and PNG images are accepted.");
+            }
+        }
 
         try {
             Path uploadsDir = Path.of(System.getProperty("user.dir"), "uploads");
             Files.createDirectories(uploadsDir);
-            Files.write(uploadsDir.resolve(filename), file.getBytes());
+
+            issueRepo.deletePhotosByIssue(issueId);
+
+            String firstUrl = null;
+            int position = 0;
+            for (MultipartFile file : files) {
+                String extension = "image/png".equals(file.getContentType()) ? ".png" : ".jpg";
+                String filename = issueId + "_" + position + extension;
+                Files.write(uploadsDir.resolve(filename), file.getBytes());
+                String url = "/uploads/" + filename;
+                issueRepo.addPhoto(issueId, url, position);
+                if (firstUrl == null) firstUrl = url;
+                position++;
+            }
+            // Keep issues.photo_url pointed at the first photo for list thumbnails / legacy callers.
+            issueRepo.updatePhotoUrl(issueId, firstUrl);
         } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to save photo.");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to save photos.");
         }
 
-        issueRepo.updatePhotoUrl(issueId, "/uploads/" + filename);
         return get(issueId, propertyId);
     }
 
@@ -93,7 +123,8 @@ public class IssueService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found."));
         List<NoteResponse> notes = issueRepo.findNotesByIssue(id)
                 .stream().map(NoteResponse::from).toList();
-        return IssueResponse.from(record, notes);
+        List<String> photoUrls = issueRepo.findPhotoUrlsByIssue(id);
+        return IssueResponse.from(record, notes, photoUrls);
     }
 
     public IssueResponse updateStatus(UUID id, UUID propertyId, IssueStatusRequest req,
@@ -160,7 +191,7 @@ public class IssueService {
 
         issueRepo.submitCost(id);
         IssueResponse submitted = get(id, propertyId);
-        List<String> managerEmails = employeeRepo.findManagerEmailsByHotel(record.propertyId());
+        List<String> managerEmails = employeeRepo.findManagerEmailsByBusiness(record.propertyId());
         emailService.sendCostSubmittedNotification(managerEmails, submitted.title());
         return submitted;
     }

@@ -63,7 +63,7 @@ public class AuthService {
         Instant expiresAt = issuedAt.plus(tokenTtl);
         String token = createToken(employee, issuedAt, expiresAt);
 
-        log.info("Employee login succeeded employeeId={} hotelId={} role={}", employee.id(), employee.hotelId(), employee.role());
+        log.info("Employee login succeeded employeeId={} businessId={} role={}", employee.id(), employee.businessId(), employee.role());
         return new AuthResponse(token, "Bearer", expiresAt, EmployeeProfileResponse.from(employee));
     }
 
@@ -74,14 +74,14 @@ public class AuthService {
         }
 
         Instant now = Instant.now();
-        UUID hotelId = UUID.randomUUID();
+        UUID businessId = UUID.randomUUID();
         UUID managerId = UUID.randomUUID();
         String address = (request.address() != null && !request.address().isBlank())
                 ? request.address().trim() : "";
 
-        employeeRepository.createHotel(hotelId, request.propertyName().trim(), address, "UTC", now);
+        employeeRepository.createBusiness(businessId, request.propertyName().trim(), address, "UTC", now);
         employeeRepository.createEmployee(
-                managerId, hotelId, null, request.managerName().trim(),
+                managerId, businessId, null, request.managerName().trim(),
                 EmployeeRole.MANAGER, "en", null, email,
                 passwordEncoder.encode(request.password()), now
         );
@@ -92,11 +92,11 @@ public class AuthService {
         Instant expiresAt = now.plus(tokenTtl);
         String token = createToken(manager, now, expiresAt);
 
-        log.info("Property registered hotelId={} managerId={} email={}", hotelId, managerId, email);
+        log.info("Property registered businessId={} managerId={} email={}", businessId, managerId, email);
         return new AuthResponse(token, "Bearer", expiresAt, EmployeeProfileResponse.from(manager));
     }
 
-    public void addEmployee(AddEmployeeRequest request, UUID hotelId, UUID managerId) {
+    public void addEmployee(AddEmployeeRequest request, UUID businessId, UUID managerId) {
         String email = request.email().trim().toLowerCase();
         if (employeeRepository.findActiveByEmail(email).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "An employee with this email already exists.");
@@ -107,32 +107,40 @@ public class AuthService {
         String phone = (request.phone() != null && !request.phone().isBlank()) ? request.phone().trim() : null;
 
         employeeRepository.createEmployee(
-                employeeId, hotelId, managerId, request.name().trim(),
+                employeeId, businessId, managerId, request.name().trim(),
                 request.role(), "en", phone, email,
                 passwordEncoder.encode(request.password()), now
         );
-        log.info("Employee added hotelId={} employeeId={} role={}", hotelId, employeeId, request.role());
+        log.info("Employee added businessId={} employeeId={} role={}", businessId, employeeId, request.role());
     }
 
-    public void resetEmployeePassword(UUID employeeId, UUID hotelId, String newPassword) {
-        EmployeeRecord employee = employeeRepository.findByIdAndHotel(employeeId, hotelId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Employee not found in your hotel."));
+    public void resetEmployeePassword(UUID employeeId, UUID businessId, String newPassword) {
+        EmployeeRecord employee = employeeRepository.findByIdAndBusiness(employeeId, businessId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Employee not found in your business."));
 
         if (employee.role() == EmployeeRole.MANAGER) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot reset a manager's password. Contact FMR support.");
         }
 
         employeeRepository.updatePasswordHash(employeeId, passwordEncoder.encode(newPassword));
-        log.info("Password reset for employeeId={} by hotelId={}", employeeId, hotelId);
+        log.info("Password reset for employeeId={} by businessId={}", employeeId, businessId);
     }
 
     public void forgotPassword(String email) {
-        employeeRepository.findActiveByEmail(email.trim().toLowerCase()).ifPresent(emp -> {
-            if (emp.role() == EmployeeRole.MANAGER) {
-                String token = passwordResetStore.createToken(emp.email());
-                emailService.sendPasswordResetEmail(emp.email(), token);
-            }
-        });
+        String normalized = email.trim().toLowerCase();
+        var found = employeeRepository.findActiveByEmail(normalized);
+        if (found.isEmpty()) {
+            log.info("Password reset requested for unknown email — no email sent (response is still 204).");
+            return;
+        }
+        EmployeeRecord emp = found.get();
+        if (emp.role() != EmployeeRole.MANAGER) {
+            log.info("Password reset requested for non-manager role={} — no email sent (response is still 204).", emp.role());
+            return;
+        }
+        String token = passwordResetStore.createToken(emp.email());
+        emailService.sendPasswordResetEmail(emp.email(), token);
+        log.info("Password reset email dispatched to manager email={}", emp.email());
     }
 
     public void resetPassword(String token, String newPassword) {
@@ -163,8 +171,15 @@ public class AuthService {
                 .issuedAt(issuedAt)
                 .expiresAt(expiresAt)
                 .subject(employee.id().toString())
-                .claim("hotel_id", employee.hotelId().toString())
-                .claim("hotel_name", employee.hotelName())
+                // Dual tenancy claims during the rename transition window.
+                // business_id/business_name are canonical; hotel_id/hotel_name are kept
+                // so tokens minted here keep working for any not-yet-updated reader and
+                // for sessions that downgrade to old code. Remove the legacy pair only
+                // after the window is confirmed safe and all clients are re-issued tokens.
+                .claim("business_id", employee.businessId().toString())
+                .claim("business_name", employee.businessName())
+                .claim("hotel_id", employee.businessId().toString())
+                .claim("hotel_name", employee.businessName())
                 .claim("email", employee.email())
                 .claim("name", employee.name())
                 .claim("role", employee.role().name())

@@ -123,8 +123,8 @@ public class DemoDataInitializer implements ApplicationRunner {
     // ── Generic demo property ─────────────────────────────────────────────────
 
     private void seedDemoProperty(Instant now) {
-        if (!employeeRepo.hotelExists(HOTEL_ID)) {
-            employeeRepo.createHotel(HOTEL_ID, "FMR Demo Boutique Property",
+        if (!employeeRepo.businessExists(HOTEL_ID)) {
+            employeeRepo.createBusiness(HOTEL_ID, "FMR Demo Boutique Property",
                     "12 Harbor Lane, Demo City", "Asia/Bangkok", now);
             log.info("Seeded demo property {}", HOTEL_ID);
         }
@@ -192,8 +192,8 @@ public class DemoDataInitializer implements ApplicationRunner {
     // ── Sunniress — raymondtjahyadi00@gmail.com ───────────────────────────────
 
     private void seedSunniress(Instant now) {
-        if (!employeeRepo.hotelExists(SUN_HOTEL_ID)) {
-            employeeRepo.createHotel(SUN_HOTEL_ID, "Sunniress",
+        if (!employeeRepo.businessExists(SUN_HOTEL_ID)) {
+            employeeRepo.createBusiness(SUN_HOTEL_ID, "Sunniress",
                     "Kuala Lumpur, Malaysia", "Asia/Kuala_Lumpur", now);
             log.info("Seeded Sunniress hotel {}", SUN_HOTEL_ID);
         }

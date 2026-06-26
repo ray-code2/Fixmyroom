@@ -19,6 +19,9 @@ logs/
 # H2 local database files
 backend/data/
 
+# Uploaded photos — runtime files, not source code
+backend/uploads/
+
 # Environment secrets — never commit these
 .env
 .env.local

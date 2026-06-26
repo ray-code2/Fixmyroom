@@ -4,9 +4,9 @@ import java.util.UUID;
 
 public record EmployeeProfileResponse(
         UUID id,
-        UUID hotelId,
+        UUID businessId,
         UUID managerId,
-        String hotelName,
+        String businessName,
         String name,
         EmployeeRole role,
         String languagePreference,
@@ -16,9 +16,9 @@ public record EmployeeProfileResponse(
     static EmployeeProfileResponse from(EmployeeRecord employee) {
         return new EmployeeProfileResponse(
                 employee.id(),
-                employee.hotelId(),
+                employee.businessId(),
                 employee.managerId(),
-                employee.hotelName(),
+                employee.businessName(),
                 employee.name(),
                 employee.role(),
                 employee.languagePreference(),

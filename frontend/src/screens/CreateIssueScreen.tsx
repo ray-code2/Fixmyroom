@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { createIssue, uploadIssuePhoto } from '../api/issueApi';
+import { createIssue, uploadIssuePhotos } from '../api/issueApi';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { Screen } from '../components/Screen';
 import { useNavigation } from '../navigation/NavigationContext';
@@ -22,7 +22,14 @@ import { CATEGORY_LABELS, PRIORITY_LABELS } from '../types/issue';
 const CATEGORIES = Object.keys(CATEGORY_LABELS) as IssueCategory[];
 const PRIORITIES = Object.keys(PRIORITY_LABELS) as IssuePriority[];
 
-type MobilePhoto = { uri: string; name: string; type: string };
+const MAX_PHOTOS = 3;
+
+// A photo the user picked locally, carrying whichever payload the platform needs for upload.
+type PickedPhoto = {
+  uri: string;
+  web?: File;
+  mobile?: { uri: string; name: string; type: string };
+};
 
 interface Props {
   token: string;
@@ -37,54 +44,67 @@ export function CreateIssueScreen({ token }: Props) {
   const [category, setCategory] = useState<IssueCategory>('OTHER');
   const [priority, setPriority] = useState<IssuePriority>('MEDIUM');
 
-  // photoUri is used for local preview; photoFile/mobilePhoto carry the raw data for upload
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [mobilePhoto, setMobilePhoto] = useState<MobilePhoto | null>(null);
+  // Up to 3 photos; each carries the platform-specific payload used at upload time.
+  const [photos, setPhotos] = useState<PickedPhoto[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  async function handlePickPhoto() {
-    setError('');
+  const remaining = MAX_PHOTOS - photos.length;
 
-    if (Platform.OS === 'web') {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/jpeg,image/png';
-      input.onchange = () => {
-        const file = input.files?.[0];
-        if (file) {
-          setPhotoUri(URL.createObjectURL(file));
-          setPhotoFile(file);
-          setMobilePhoto(null);
-        }
-      };
-      input.click();
-    } else {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        setError('Camera permission is required to take a photo.');
-        return;
-      }
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ['images'],
-        quality: 1.0,
-      });
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
+  function appendPhotos(next: PickedPhoto[]) {
+    setPhotos(prev => [...prev, ...next].slice(0, MAX_PHOTOS));
+  }
+
+  // Web: native file picker, multi-select, capped to remaining slots.
+  function pickPhotosWeb() {
+    setError('');
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png';
+    input.multiple = true;
+    input.onchange = () => {
+      const files = Array.from(input.files ?? []).slice(0, remaining);
+      appendPhotos(files.map(file => ({ uri: URL.createObjectURL(file), web: file })));
+    };
+    input.click();
+  }
+
+  // Native: pick one or more from the photo library.
+  async function pickPhotosLibrary() {
+    setError('');
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      selectionLimit: remaining,
+      quality: 0.7,
+    });
+    if (!result.canceled) {
+      appendPhotos(result.assets.map((asset, i) => {
         const ext = asset.mimeType === 'image/png' ? 'png' : 'jpg';
-        setPhotoUri(asset.uri);
-        setMobilePhoto({ uri: asset.uri, name: `photo.${ext}`, type: asset.mimeType ?? 'image/jpeg' });
-        setPhotoFile(null);
-      }
+        return { uri: asset.uri, mobile: { uri: asset.uri, name: `photo-${Date.now()}-${i}.${ext}`, type: asset.mimeType ?? 'image/jpeg' } };
+      }));
     }
   }
 
-  function removePhoto() {
-    setPhotoUri(null);
-    setPhotoFile(null);
-    setMobilePhoto(null);
+  // Native: take a new photo with the camera.
+  async function takePhoto() {
+    setError('');
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      setError('Camera permission is required to take a photo.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.7 });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      const ext = asset.mimeType === 'image/png' ? 'png' : 'jpg';
+      appendPhotos([{ uri: asset.uri, mobile: { uri: asset.uri, name: `photo-${Date.now()}.${ext}`, type: asset.mimeType ?? 'image/jpeg' } }]);
+    }
+  }
+
+  function removePhoto(index: number) {
+    setPhotos(prev => prev.filter((_, i) => i !== index));
   }
 
   async function handleSubmit() {
@@ -101,8 +121,9 @@ export function CreateIssueScreen({ token }: Props) {
         ...(trimmedDesc ? { description: trimmedDesc } : {}),
       }, token);
 
-      if (photoFile ?? mobilePhoto) {
-        await uploadIssuePhoto(issue.id, (photoFile ?? mobilePhoto)!, token);
+      if (photos.length > 0) {
+        const uploads = photos.map(p => p.web ?? p.mobile!);
+        await uploadIssuePhotos(issue.id, uploads, token);
       }
 
       navigate({ name: 'IssueDetail', issueId: issue.id });
@@ -123,28 +144,47 @@ export function CreateIssueScreen({ token }: Props) {
         <Text style={styles.heading}>Report an Issue</Text>
         <Text style={styles.sub}>Fill in the details. The manager will be notified immediately.</Text>
 
-        {/* Photo attachment */}
+        {/* Photo attachment (up to 3) */}
         <View style={styles.field}>
-          <Text style={styles.label}>Photo</Text>
-          {photoUri ? (
-            <View style={styles.photoPreviewWrap}>
-              <Image source={{ uri: photoUri }} style={styles.photoPreview} resizeMode="contain" />
-              <TouchableOpacity style={styles.removePhoto} onPress={removePhoto}>
-                <Text style={styles.removePhotoText}>✕ Remove</Text>
-              </TouchableOpacity>
+          <View style={styles.labelRow}>
+            <Text style={styles.label}>Photos</Text>
+            <Text style={styles.labelHint}>{photos.length}/{MAX_PHOTOS} · optional</Text>
+          </View>
+
+          {photos.length > 0 && (
+            <View style={styles.thumbRow}>
+              {photos.map((p, i) => (
+                <View key={p.uri} style={styles.thumbWrap}>
+                  <Image source={{ uri: p.uri }} style={styles.thumb} resizeMode="cover" />
+                  <TouchableOpacity style={styles.thumbRemove} onPress={() => removePhoto(i)}>
+                    <Text style={styles.thumbRemoveText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
             </View>
-          ) : (
-            <TouchableOpacity style={styles.photoPlaceholder} onPress={() => { void handlePickPhoto(); }}>
-              <Text style={styles.photoIcon}>📷</Text>
-              <Text style={styles.photoPlaceholderTitle}>
-                {Platform.OS === 'web' ? 'Click to upload a photo' : 'Tap to open camera'}
-              </Text>
-              <Text style={styles.photoPlaceholderHint}>
-                {Platform.OS === 'web'
-                  ? 'Accepts JPEG and PNG only · AI will detect category'
-                  : 'AI will detect the issue category automatically'}
-              </Text>
-            </TouchableOpacity>
+          )}
+
+          {remaining > 0 && (
+            Platform.OS === 'web' ? (
+              <TouchableOpacity style={styles.photoPlaceholder} onPress={pickPhotosWeb}>
+                <Text style={styles.photoIcon}>📷</Text>
+                <Text style={styles.photoPlaceholderTitle}>
+                  {photos.length === 0 ? 'Click to add photos' : `Add ${remaining} more`}
+                </Text>
+                <Text style={styles.photoPlaceholderHint}>JPEG or PNG · up to {MAX_PHOTOS}</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.addBtnRow}>
+                <TouchableOpacity style={styles.addBtn} onPress={() => { void takePhoto(); }}>
+                  <Text style={styles.addBtnIcon}>📷</Text>
+                  <Text style={styles.addBtnText}>Camera</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.addBtn} onPress={() => { void pickPhotosLibrary(); }}>
+                  <Text style={styles.addBtnIcon}>🖼️</Text>
+                  <Text style={styles.addBtnText}>Library</Text>
+                </TouchableOpacity>
+              </View>
+            )
           )}
         </View>
 
@@ -219,7 +259,7 @@ export function CreateIssueScreen({ token }: Props) {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <PrimaryButton
-          label={submitting ? (photoFile ?? mobilePhoto ? 'Uploading…' : 'Submitting…') : 'Submit Issue'}
+          label={submitting ? (photos.length > 0 ? 'Uploading…' : 'Submitting…') : 'Submit Issue'}
           loading={submitting}
           onPress={handleSubmit}
           style={styles.cta}
@@ -263,10 +303,37 @@ const styles = StyleSheet.create({
   photoIcon: { fontSize: 28 },
   photoPlaceholderTitle: { fontSize: 14, fontWeight: '600', color: colors.black },
   photoPlaceholderHint: { fontSize: 12, color: colors.muted, textAlign: 'center', paddingHorizontal: 24 },
-  photoPreviewWrap: { gap: 8, borderRadius: 14, overflow: 'hidden', backgroundColor: '#000' },
-  photoPreview: { width: '100%', aspectRatio: 4 / 3, borderRadius: 14 },
-  removePhoto: { alignSelf: 'flex-start', paddingHorizontal: 2 },
-  removePhotoText: { fontSize: 13, fontWeight: '600', color: colors.danger },
+  thumbRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  thumbWrap: { position: 'relative', borderRadius: 12, overflow: 'hidden' },
+  thumb: { width: 88, height: 88, borderRadius: 12, backgroundColor: '#EEE' },
+  thumbRemove: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbRemoveText: { color: '#fff', fontSize: 12, fontWeight: '700', lineHeight: 14 },
+  addBtnRow: { flexDirection: 'row', gap: 10 },
+  addBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#D6CFC8',
+    borderStyle: 'dashed',
+    backgroundColor: '#FAFAF8',
+  },
+  addBtnIcon: { fontSize: 18 },
+  addBtnText: { fontSize: 14, fontWeight: '600', color: colors.black },
   chipActive: { backgroundColor: '#F6EFE8', borderColor: colors.coffee },
   chipText: { fontSize: 13, fontWeight: '600', color: colors.muted },
   chipTextActive: { color: colors.coffee },

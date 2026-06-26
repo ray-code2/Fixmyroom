@@ -25,6 +25,7 @@ public record IssueResponse(
         Instant updatedAt,
         Instant resolvedAt,
         String photoUrl,
+        List<String> photoUrls,
         BigDecimal materialCost,
         BigDecimal laborCost,
         BigDecimal otherCost,
@@ -33,9 +34,14 @@ public record IssueResponse(
         UUID costSubmittedBy,
         UUID costApprovedBy,
         Instant costApprovedAt,
-        String costRejectionReason
+        String costRejectionReason,
+        Double hoursOutOfService
 ) {
     public static IssueResponse from(IssueRecord r, List<NoteResponse> notes) {
+        return from(r, notes, List.of());
+    }
+
+    public static IssueResponse from(IssueRecord r, List<NoteResponse> notes, List<String> photoUrls) {
         return new IssueResponse(
                 r.id(), r.roomId(), r.unitNumber(), r.title(), r.description(),
                 r.category(), r.priority(), r.status(),
@@ -43,11 +49,12 @@ public record IssueResponse(
                 r.assignedToId(), r.assignedToName(),
                 notes, r.estimatedCost(), r.actualCost(),
                 r.createdAt(), r.updatedAt(), r.resolvedAt(),
-                r.photoUrl(),
+                r.photoUrl(), photoUrls,
                 r.materialCost(), r.laborCost(), r.otherCost(),
                 r.costNotes(), r.costStatus(),
                 r.costSubmittedBy(), r.costApprovedBy(),
-                r.costApprovedAt(), r.costRejectionReason()
+                r.costApprovedAt(), r.costRejectionReason(),
+                r.hoursOutOfService()
         );
     }
 }

@@ -33,4 +33,14 @@ public record IssueRecord(
         UUID costApprovedBy,
         Instant costApprovedAt,
         String costRejectionReason
-) {}
+) {
+    /** Wall-clock hours the issue caused downtime.
+     *  CANCELLED → null (false alarm, never counts).
+     *  COMPLETED → final fixed value (resolvedAt − createdAt).
+     *  All other statuses → live value (NOW − createdAt). */
+    public Double hoursOutOfService() {
+        if (status == IssueStatus.CANCELLED) return null;
+        Instant end = (status == IssueStatus.COMPLETED && resolvedAt != null) ? resolvedAt : Instant.now();
+        return (end.toEpochMilli() - createdAt.toEpochMilli()) / 3_600_000.0;
+    }
+}
