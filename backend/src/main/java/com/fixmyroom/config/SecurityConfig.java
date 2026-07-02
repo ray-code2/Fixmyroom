@@ -27,11 +27,18 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    /** Secrets that have shipped as documented placeholders — never valid, no matter how long they are. */
+    private static final Set<String> KNOWN_PLACEHOLDER_SECRETS = Set.of(
+            "dev-only-change-this-secret-before-production-please",
+            "change-this-to-a-long-random-secret-of-at-least-32-bytes"
+    );
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationConverter jwtAuthenticationConverter) throws Exception {
         http
@@ -88,6 +95,11 @@ public class SecurityConfig {
     }
 
     private byte[] validateSecret(String secret) {
+        if (KNOWN_PLACEHOLDER_SECRETS.contains(secret)) {
+            throw new IllegalStateException(
+                    "FMR_JWT_SECRET is set to a known placeholder value. Generate a real, random secret "
+                            + "(at least 32 bytes) and set it before starting the app.");
+        }
         byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
         if (secretBytes.length < 32) {
             throw new IllegalStateException("FMR_JWT_SECRET must be at least 32 bytes.");

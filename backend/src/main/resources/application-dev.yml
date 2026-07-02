@@ -1,0 +1,6 @@
+app:
+  security:
+    jwt:
+      # Local-only fallback so `dev` profile runs work without any setup. Never used
+      # unless the "dev" Spring profile is active, and FMR_JWT_SECRET still wins if set.
+      secret: ${FMR_JWT_SECRET:local-development-only-secret-please-rotate-before-shipping}

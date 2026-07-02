@@ -41,7 +41,11 @@ app:
   security:
     jwt:
       issuer: ${FMR_JWT_ISSUER:fmr-local}
-      secret: ${FMR_JWT_SECRET:dev-only-change-this-secret-before-production-please}
+      # No default here on purpose — the app must fail to start rather than silently
+      # sign tokens with a known secret. Local/dev runs get a fallback from the
+      # "dev" Spring profile (see application-dev.yml); every other environment
+      # must set FMR_JWT_SECRET explicitly.
+      secret: ${FMR_JWT_SECRET}
       ttl-minutes: ${FMR_JWT_TTL_MINUTES:480}
   seed:
     enabled: ${FMR_SEED_DEMO_USERS:true}
