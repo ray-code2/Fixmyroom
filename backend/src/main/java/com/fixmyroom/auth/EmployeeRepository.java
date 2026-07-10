@@ -98,6 +98,23 @@ public class EmployeeRepository {
         );
     }
 
+    /** Who a staff/technician reports to — used on the staff dashboard's "Report to" list. */
+    public List<ManagerContact> findActiveManagersByBusiness(UUID businessId) {
+        return jdbcTemplate.query("""
+                SELECT id, name, email, phone FROM employees
+                WHERE business_id = ? AND role = 'MANAGER' AND active = TRUE
+                ORDER BY name
+                """,
+                (rs, row) -> new ManagerContact(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("name"),
+                        rs.getString("email"),
+                        rs.getString("phone")
+                ),
+                businessId
+        );
+    }
+
     public List<EmployeeListResponse> findTechniciansByProperty(UUID businessId) {
         return jdbcTemplate.query("""
                 SELECT id, name FROM employees

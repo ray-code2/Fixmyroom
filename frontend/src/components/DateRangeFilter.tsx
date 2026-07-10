@@ -2,11 +2,12 @@ import { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
 } from 'react-native';
+import { Calendar } from 'lucide-react-native';
+import { CalendarPicker } from './CalendarPicker';
 import { colors } from '../theme/colors';
 
 export interface DateRange {
@@ -59,8 +60,10 @@ interface Props {
 
 export default function DateRangeFilter({ value, onChange }: Props) {
   const [activeKey, setActiveKey] = useState<PresetKey>('ALL');
-  const [customFrom, setCustomFrom] = useState('');
-  const [customTo, setCustomTo] = useState('');
+  const [customFrom, setCustomFrom] = useState<string | null>(null);
+  const [customTo, setCustomTo] = useState<string | null>(null);
+  const [fromPickerOpen, setFromPickerOpen] = useState(false);
+  const [toPickerOpen, setToPickerOpen] = useState(false);
 
   function selectPreset(key: PresetKey) {
     setActiveKey(key);
@@ -72,9 +75,9 @@ export default function DateRangeFilter({ value, onChange }: Props) {
   function applyCustom() {
     if (!customFrom && !customTo) return;
     onChange({
-      from: customFrom || null,
-      to: customTo || null,
-      label: `${customFrom || '…'} → ${customTo || '…'}`,
+      from: customFrom,
+      to: customTo,
+      label: `${customFrom ?? '…'} → ${customTo ?? '…'}`,
     });
   }
 
@@ -99,28 +102,43 @@ export default function DateRangeFilter({ value, onChange }: Props) {
       </ScrollView>
 
       {activeKey === 'CUSTOM' && (
-        <View style={styles.customRow}>
-          <TextInput
-            style={styles.dateInput}
-            placeholder="From (YYYY-MM-DD)"
-            placeholderTextColor={colors.muted}
+        <>
+          <View style={styles.customRow}>
+            <TouchableOpacity style={styles.dateField} onPress={() => setFromPickerOpen(true)}>
+              <Calendar size={13} color={colors.coffee} />
+              <Text style={[styles.dateFieldText, !customFrom && styles.dateFieldPlaceholder]}>
+                {customFrom ?? 'From'}
+              </Text>
+            </TouchableOpacity>
+            <Text style={styles.dash}>→</Text>
+            <TouchableOpacity style={styles.dateField} onPress={() => setToPickerOpen(true)}>
+              <Calendar size={13} color={colors.coffee} />
+              <Text style={[styles.dateFieldText, !customTo && styles.dateFieldPlaceholder]}>
+                {customTo ?? 'To'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.applyBtn} onPress={applyCustom}>
+              <Text style={styles.applyText}>Apply</Text>
+            </TouchableOpacity>
+          </View>
+
+          <CalendarPicker
+            visible={fromPickerOpen}
+            onClose={() => setFromPickerOpen(false)}
             value={customFrom}
-            onChangeText={setCustomFrom}
-            maxLength={10}
+            onSelect={setCustomFrom}
+            maxDate={customTo ?? undefined}
+            title="Select start date"
           />
-          <Text style={styles.dash}>→</Text>
-          <TextInput
-            style={styles.dateInput}
-            placeholder="To (YYYY-MM-DD)"
-            placeholderTextColor={colors.muted}
+          <CalendarPicker
+            visible={toPickerOpen}
+            onClose={() => setToPickerOpen(false)}
             value={customTo}
-            onChangeText={setCustomTo}
-            maxLength={10}
+            onSelect={setCustomTo}
+            minDate={customFrom ?? undefined}
+            title="Select end date"
           />
-          <TouchableOpacity style={styles.applyBtn} onPress={applyCustom}>
-            <Text style={styles.applyText}>Apply</Text>
-          </TouchableOpacity>
-        </View>
+        </>
       )}
 
       {value.from || value.to ? (
@@ -147,16 +165,20 @@ const styles = StyleSheet.create({
   pillText: { fontSize: 13, fontWeight: '600', color: colors.muted },
   pillTextActive: { color: '#fff' },
   customRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dateInput: {
+  dateField: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     borderWidth: 1,
     borderColor: '#D6CFC8',
     borderRadius: 8,
     paddingHorizontal: 10,
-    paddingVertical: 7,
-    fontSize: 13,
-    color: colors.black,
+    paddingVertical: 8,
+    backgroundColor: '#fff',
   },
+  dateFieldText: { fontSize: 13, fontWeight: '600', color: colors.black },
+  dateFieldPlaceholder: { color: colors.muted, fontWeight: '400' },
   dash: { fontSize: 14, color: colors.muted },
   applyBtn: {
     paddingHorizontal: 12,

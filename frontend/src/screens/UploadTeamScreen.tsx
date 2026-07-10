@@ -68,10 +68,6 @@ export function UploadTeamScreen({ token, employee: _ }: { token: string; employ
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <TouchableOpacity onPress={goBack} style={styles.backRow}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
         <View style={styles.titleRow}>
           <Text style={styles.title}>Upload Team via Excel</Text>
           <TouchableOpacity
@@ -197,8 +193,6 @@ function ResultBadge({ count, label, color, bg }: { count: number; label: string
 
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 16, paddingBottom: 48 },
-  backRow: { marginBottom: 4 },
-  backText: { color: colors.coffee, fontWeight: '600', fontSize: 14 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   title: { flex: 1, fontSize: 22, fontWeight: '700', color: colors.black },
   subtitle: { fontSize: 14, color: colors.muted, lineHeight: 20 },

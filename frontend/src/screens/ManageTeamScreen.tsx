@@ -5,7 +5,6 @@ import { listIssues } from '../api/issueApi';
 import DateRangeFilter, { ALL_TIME, type DateRange } from '../components/DateRangeFilter';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { Screen } from '../components/Screen';
-import { useNavigation } from '../navigation/NavigationContext';
 import { colors } from '../theme/colors';
 import type { EmployeeProfile } from '../types/auth';
 import type { IssueSummary } from '../types/issue';
@@ -19,7 +18,6 @@ const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
 };
 
 export function ManageTeamScreen({ token, employee: _ }: { token: string; employee: EmployeeProfile }) {
-  const { goBack } = useNavigation();
   const [employees, setEmployees] = useState<EmployeeTeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -82,9 +80,6 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity onPress={goBack} style={styles.backRow}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
         <Text style={styles.title}>Manage Team</Text>
         <Text style={styles.subtitle}>
           View your staff and technicians. Tap Reset Password to set a new login for any team member.
@@ -97,6 +92,8 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
           value={searchQuery}
           onChangeText={setSearchQuery}
           clearButtonMode="while-editing"
+          autoComplete="off"
+          textContentType="none"
         />
 
         <DateRangeFilter value={dateRange} onChange={setDateRange} />
@@ -171,6 +168,8 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
                     value={newPassword}
                     onChangeText={setNewPassword}
                     secureTextEntry
+                    autoComplete="new-password"
+                    textContentType="newPassword"
                     autoFocus
                   />
 
@@ -221,8 +220,6 @@ const styles = StyleSheet.create({
     color: colors.black,
     backgroundColor: colors.white,
   },
-  backRow: { marginBottom: 4 },
-  backText: { color: colors.coffee, fontWeight: '600', fontSize: 14 },
   title: { fontSize: 22, fontWeight: '700', color: colors.black },
   subtitle: { fontSize: 14, color: colors.muted, lineHeight: 20 },
   filterRow: { flexDirection: 'row', gap: 8 },

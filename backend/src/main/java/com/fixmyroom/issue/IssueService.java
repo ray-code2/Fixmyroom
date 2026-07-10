@@ -14,7 +14,10 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -36,11 +39,9 @@ public class IssueService {
     }
 
     public IssueResponse create(IssueCreateRequest req, UUID reportedBy, UUID propertyId) {
-        if (req.roomId() != null) {
-            roomRepo.findByIdAndProperty(req.roomId(), propertyId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                            "Unit not found in this property."));
-        }
+        roomRepo.findByIdAndProperty(req.roomId(), propertyId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Unit not found in this property."));
 
         UUID id = issueRepo.create(propertyId, req.roomId(), req.title(),
                 req.description(), req.category(), req.priority(), reportedBy);
@@ -138,11 +139,42 @@ public class IssueService {
         return get(id, propertyId);
     }
 
-    public IssueResponse assign(UUID id, UUID propertyId, IssueAssignRequest req, UUID managerId) {
-        issueRepo.findByIdAndProperty(id, propertyId)
+    public IssueResponse approve(UUID id, UUID propertyId, IssueApproveRequest req, UUID managerId) {
+        IssueRecord record = issueRepo.findByIdAndProperty(id, propertyId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found."));
 
-        issueRepo.assignTechnician(id, req.technicianId(), managerId);
+        if (record.status() != IssueStatus.NEW) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Issue must be NEW to approve (currently " + record.status().name() + ").");
+        }
+
+        issueRepo.approve(id, managerId, req.estimatedCost(), req.note());
+        return get(id, propertyId);
+    }
+
+    public IssueResponse decline(UUID id, UUID propertyId, IssueDeclineRequest req, UUID managerId) {
+        IssueRecord record = issueRepo.findByIdAndProperty(id, propertyId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found."));
+
+        if (record.status() != IssueStatus.NEW) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Issue must be NEW to decline (currently " + record.status().name() + ").");
+        }
+
+        issueRepo.decline(id, managerId, req.reason());
+        return get(id, propertyId);
+    }
+
+    public IssueResponse assign(UUID id, UUID propertyId, IssueAssignRequest req, UUID managerId) {
+        IssueRecord record = issueRepo.findByIdAndProperty(id, propertyId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Issue not found."));
+
+        if (record.status() != IssueStatus.APPROVED && record.status() != IssueStatus.ASSIGNED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Issue must be approved before it can be assigned (currently " + record.status().name() + ").");
+        }
+
+        issueRepo.assignTechnician(id, req.technicianId(), managerId, record.status());
         IssueResponse assigned = get(id, propertyId);
         employeeRepo.findActiveById(req.technicianId()).ifPresent(tech ->
                 emailService.sendAssignedNotification(tech.email(), assigned.title()));
@@ -244,12 +276,39 @@ public class IssueService {
                 .orElseThrow();
     }
 
+    /**
+     * Explicit allow-list of what a MANAGER may PATCH /status into, keyed by current status.
+     * NEW has no entry — a NEW ticket can only leave that state via approve()/decline(), never
+     * a generic PATCH. APPROVED/DECLINED/ASSIGNED never appear as a value here for the same
+     * reason: approve/decline/assign are dedicated endpoints, not PATCH destinations.
+     */
+    private static final Map<IssueStatus, Set<IssueStatus>> MANAGER_TRANSITIONS = Map.of(
+            IssueStatus.APPROVED,      EnumSet.of(IssueStatus.CANCELLED),
+            IssueStatus.ASSIGNED,      EnumSet.of(IssueStatus.IN_PROGRESS, IssueStatus.CANCELLED),
+            IssueStatus.IN_PROGRESS,   EnumSet.of(IssueStatus.WAITING_PARTS, IssueStatus.COMPLETED, IssueStatus.CANCELLED),
+            IssueStatus.WAITING_PARTS, EnumSet.of(IssueStatus.IN_PROGRESS, IssueStatus.COMPLETED, IssueStatus.CANCELLED)
+    );
+
+    /**
+     * Unchanged from the pre-gate behavior: a technician may move an issue assigned to them
+     * to any of these three destinations regardless of its current (non-terminal) status —
+     * not a strict from-to pairing (e.g. ASSIGNED -> COMPLETED directly is allowed, same as
+     * before). NEW/APPROVED/DECLINED/ASSIGNED/CANCELLED are never reachable.
+     */
+    private static final Set<IssueStatus> TECHNICIAN_ALLOWED_DESTINATIONS =
+            EnumSet.of(IssueStatus.IN_PROGRESS, IssueStatus.WAITING_PARTS, IssueStatus.COMPLETED);
+
     private void validateStatusTransition(IssueRecord issue, IssueStatus next, String role, UUID userId) {
         IssueStatus current = issue.status();
 
-        if (current == IssueStatus.COMPLETED || current == IssueStatus.CANCELLED) {
+        if (current == IssueStatus.COMPLETED || current == IssueStatus.CANCELLED || current == IssueStatus.DECLINED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Issue is already " + current.name().toLowerCase() + ".");
+        }
+
+        if ("STAFF".equals(role)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Staff cannot change issue status.");
         }
 
         if ("TECHNICIAN".equals(role)) {
@@ -257,15 +316,19 @@ public class IssueService {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                         "You can only update issues assigned to you.");
             }
-            if (next == IssueStatus.NEW || next == IssueStatus.ASSIGNED || next == IssueStatus.CANCELLED) {
+            if (!TECHNICIAN_ALLOWED_DESTINATIONS.contains(next)) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                         "Technicians cannot set status to " + next.name() + ".");
             }
+            return;
         }
 
-        if ("STAFF".equals(role)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Staff cannot change issue status.");
+        // MANAGER
+        Set<IssueStatus> allowed = MANAGER_TRANSITIONS.get(current);
+        if (allowed == null || !allowed.contains(next)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Cannot change status from " + current.name() + " to " + next.name() +
+                            " this way — use the approve, decline, or assign actions instead.");
         }
     }
 }

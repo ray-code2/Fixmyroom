@@ -71,6 +71,22 @@ public class IssueController {
         return issueService.updateStatus(id, propertyId(jwt), req, employeeId(jwt), role(jwt));
     }
 
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("hasRole('MANAGER')")
+    public IssueResponse approve(@PathVariable UUID id,
+                                 @Valid @RequestBody(required = false) IssueApproveRequest req,
+                                 @AuthenticationPrincipal Jwt jwt) {
+        return issueService.approve(id, propertyId(jwt), req != null ? req : IssueApproveRequest.empty(), employeeId(jwt));
+    }
+
+    @PostMapping("/{id}/decline")
+    @PreAuthorize("hasRole('MANAGER')")
+    public IssueResponse decline(@PathVariable UUID id,
+                                 @Valid @RequestBody(required = false) IssueDeclineRequest req,
+                                 @AuthenticationPrincipal Jwt jwt) {
+        return issueService.decline(id, propertyId(jwt), req != null ? req : IssueDeclineRequest.empty(), employeeId(jwt));
+    }
+
     @PatchMapping("/{id}/assign")
     @PreAuthorize("hasRole('MANAGER')")
     public IssueResponse assign(@PathVariable UUID id,

@@ -12,7 +12,6 @@ import {
 import { addEmployee } from '../api/employeeApi';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { Screen } from '../components/Screen';
-import { useNavigation } from '../navigation/NavigationContext';
 import { colors } from '../theme/colors';
 import type { EmployeeProfile } from '../types/auth';
 
@@ -29,7 +28,6 @@ interface Props {
 }
 
 export function AddTeamMemberScreen({ token }: Props) {
-  const { goBack } = useNavigation();
 
   const [name, setName]       = useState('');
   const [email, setEmail]     = useState('');
@@ -76,10 +74,6 @@ export function AddTeamMemberScreen({ token }: Props) {
         style={styles.kav}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
-
           <Text style={styles.heading}>Add Team Member</Text>
           <Text style={styles.sub}>
             They'll log in with the email and password you set here.
@@ -165,8 +159,6 @@ function Field({
 const styles = StyleSheet.create({
   kav: { flex: 1 },
   content: { padding: 20, gap: 16, paddingBottom: 48 },
-  backBtn: { marginBottom: 4 },
-  backText: { color: colors.coffee, fontWeight: '700', fontSize: 15 },
   heading: { fontSize: 26, fontWeight: '700', color: colors.black, lineHeight: 32 },
   sub: { fontSize: 14, color: colors.muted, marginTop: -8 },
 

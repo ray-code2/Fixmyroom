@@ -91,4 +91,41 @@
         </createIndex>
     </changeSet>
 
+    <!--
+        Ticket-level approval gate: adds APPROVED and DECLINED to issues.status so a
+        manager must approve (or decline) a NEW ticket before it can be assigned to a
+        technician. See IssueService.assign()/approve()/decline().
+
+        The status column's CHECK constraint was declared inline and unnamed in
+        schema.sql, so each engine auto-generated its own constraint name:
+          - H2 (MODE=PostgreSQL): name is derived from the DDL text, not a
+            session/creation-order counter — confirmed by rebuilding the schema from
+            scratch twice on independent databases and getting the identical name
+            both times, CONSTRAINT_814A66. That's only stable as long as the issues
+            table's CREATE TABLE text in schema.sql doesn't change, which it won't —
+            schema.sql is a frozen historical baseline per the 001 changeset comment.
+          - Real Postgres names an unnamed column CHECK constraint deterministically
+            as "<table>_<column>_check" by convention, so it's "issues_status_check"
+            there without needing to look anything up.
+        Hence dbms-scoped drops below rather than one portable statement. Both engines
+        converge on the same explicit name afterward, so no future changeset touching
+        this constraint needs to repeat this dance.
+    -->
+    <changeSet id="006-issue-approval-gate" author="fmr">
+        <comment>Widen issues.status CHECK to add APPROVED and DECLINED</comment>
+        <sql dbms="h2">ALTER TABLE issues DROP CONSTRAINT CONSTRAINT_814A66;</sql>
+        <sql dbms="postgresql">ALTER TABLE issues DROP CONSTRAINT issues_status_check;</sql>
+        <sql>
+            ALTER TABLE issues ADD CONSTRAINT issues_status_check
+                CHECK (status IN ('NEW','APPROVED','DECLINED','ASSIGNED','IN_PROGRESS','WAITING_PARTS','COMPLETED','CANCELLED'));
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE issues DROP CONSTRAINT issues_status_check;</sql>
+            <sql>
+                ALTER TABLE issues ADD CONSTRAINT issues_status_check
+                    CHECK (status IN ('NEW','ASSIGNED','IN_PROGRESS','WAITING_PARTS','COMPLETED','CANCELLED'));
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

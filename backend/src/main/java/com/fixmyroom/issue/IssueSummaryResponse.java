@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record IssueSummaryResponse(
         UUID id,
+        String ticketId,
         String unitNumber,
         String title,
         String description,
@@ -23,7 +24,7 @@ public record IssueSummaryResponse(
 ) {
     public static IssueSummaryResponse from(IssueRecord r) {
         return new IssueSummaryResponse(
-                r.id(), r.unitNumber(), r.title(), r.description(), r.category(), r.priority(),
+                r.id(), r.ticketId(), r.unitNumber(), r.title(), r.description(), r.category(), r.priority(),
                 r.status(), r.reportedByName(), r.assignedToName(),
                 r.estimatedCost(), r.actualCost(), r.photoUrl(),
                 r.createdAt(), r.updatedAt(), r.hoursOutOfService()

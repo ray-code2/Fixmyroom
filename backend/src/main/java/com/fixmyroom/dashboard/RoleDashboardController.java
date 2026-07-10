@@ -1,5 +1,7 @@
 package com.fixmyroom.dashboard;
 
+import com.fixmyroom.auth.EmployeeRepository;
+import com.fixmyroom.auth.ManagerContact;
 import com.fixmyroom.common.JwtTenant;
 import com.fixmyroom.issue.CostStatus;
 import com.fixmyroom.issue.IssueRecord;
@@ -30,10 +32,12 @@ public class RoleDashboardController {
 
     private final IssueRepository issueRepo;
     private final RoomRepository roomRepo;
+    private final EmployeeRepository employeeRepo;
 
-    public RoleDashboardController(IssueRepository issueRepo, RoomRepository roomRepo) {
+    public RoleDashboardController(IssueRepository issueRepo, RoomRepository roomRepo, EmployeeRepository employeeRepo) {
         this.issueRepo = issueRepo;
         this.roomRepo = roomRepo;
+        this.employeeRepo = employeeRepo;
     }
 
     @GetMapping("/staff/dashboard")
@@ -47,11 +51,14 @@ public class RoleDashboardController {
         int myReports = issueRepo.findByProperty(propertyId, null, null, null, null).stream()
                 .filter(i -> i.reportedById().equals(employeeId(jwt))).toList().size();
 
+        List<ManagerContact> managers = employeeRepo.findActiveManagersByBusiness(propertyId);
+
         return new StaffDashboardResponse(
                 claim(jwt, "name"),
                 JwtTenant.businessName(jwt),
                 rooms,
                 myReports,
+                managers,
                 List.of("Choose unit", "Describe the problem", "Add a photo (optional)", "Submit — manager is notified instantly"),
                 "All submitted reports wait for manager review before any external dispatch."
         );
@@ -73,7 +80,7 @@ public class RoleDashboardController {
             List<IssueRecord> rawAll = issueRepo.findByProperty(propertyId, null, null, fromInstant, toInstant);
             List<IssueSummaryResponse> all = rawAll.stream().map(IssueSummaryResponse::from).toList();
 
-            int openIssues   = (int) all.stream().filter(i -> i.status() != IssueStatus.COMPLETED && i.status() != IssueStatus.CANCELLED).count();
+            int openIssues   = (int) all.stream().filter(i -> i.status() != IssueStatus.COMPLETED && i.status() != IssueStatus.CANCELLED && i.status() != IssueStatus.DECLINED).count();
             int newIssues    = (int) all.stream().filter(i -> i.status() == IssueStatus.NEW).count();
             int inProgress   = (int) all.stream().filter(i -> i.status() == IssueStatus.IN_PROGRESS).count();
             int waitingParts = (int) all.stream().filter(i -> i.status() == IssueStatus.WAITING_PARTS).count();
@@ -92,7 +99,7 @@ public class RoleDashboardController {
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             List<IssueSummaryResponse> urgent = all.stream()
-                    .filter(i -> i.status() != IssueStatus.COMPLETED && i.status() != IssueStatus.CANCELLED)
+                    .filter(i -> i.status() != IssueStatus.COMPLETED && i.status() != IssueStatus.CANCELLED && i.status() != IssueStatus.DECLINED)
                     .filter(i -> i.priority().name().equals("URGENT") || i.priority().name().equals("HIGH"))
                     .limit(5).toList();
 
@@ -117,7 +124,7 @@ public class RoleDashboardController {
 
         List<IssueSummaryResponse> urgent = issueRepo.findByProperty(propertyId, null, null, null, null)
                 .stream()
-                .filter(i -> i.status() != IssueStatus.COMPLETED && i.status() != IssueStatus.CANCELLED)
+                .filter(i -> i.status() != IssueStatus.COMPLETED && i.status() != IssueStatus.CANCELLED && i.status() != IssueStatus.DECLINED)
                 .filter(i -> i.priority().name().equals("URGENT") || i.priority().name().equals("HIGH"))
                 .limit(5)
                 .map(IssueSummaryResponse::from)
@@ -188,6 +195,7 @@ public class RoleDashboardController {
             String propertyName,
             List<RoomResponse> quickUnits,
             int myReportCount,
+            List<ManagerContact> managers,
             List<String> reportSteps,
             String approvalRule
     ) {}

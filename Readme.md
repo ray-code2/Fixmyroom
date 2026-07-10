@@ -36,10 +36,12 @@ Fixmyroom/
 ## Quick Start
 
 **1. Start the backend**
-```bash
+```powershell
 cd backend
-mvn spring-boot:run
+.\run.ps1
 ```
+`mvn spring-boot:run` alone will NOT work — Spring Boot doesn't read `.env` files, so `FMR_JWT_SECRET` won't resolve. `run.ps1` loads `.env` into the environment first, then runs Maven. (Not on Windows? Source `.env` into your shell yourself, then run `mvn spring-boot:run`.)
+
 Runs at `http://localhost:8080`. Demo accounts are seeded automatically on first run.
 
 **2. Start the mobile / web app**

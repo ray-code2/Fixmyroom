@@ -1,10 +1,18 @@
 import type { IssueSummary, RoomSummary } from './issue';
 
+export type ManagerContact = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+};
+
 export type StaffDashboard = {
   employeeName: string;
   propertyName: string;
   quickUnits: RoomSummary[];
   myReportCount: number;
+  managers: ManagerContact[];
   reportSteps: string[];
   approvalRule: string;
 };

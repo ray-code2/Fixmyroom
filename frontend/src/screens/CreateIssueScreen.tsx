@@ -1,7 +1,8 @@
 import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Image,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -10,7 +11,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { ChevronDown } from 'lucide-react-native';
 import { createIssue, uploadIssuePhotos } from '../api/issueApi';
+import { listRooms, type Room } from '../api/roomApi';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { Screen } from '../components/Screen';
 import { useNavigation } from '../navigation/NavigationContext';
@@ -44,11 +47,31 @@ export function CreateIssueScreen({ token }: Props) {
   const [category, setCategory] = useState<IssueCategory>('OTHER');
   const [priority, setPriority] = useState<IssuePriority>('MEDIUM');
 
+  // Room — required; the list is whatever the manager has uploaded for this property.
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [roomsLoading, setRoomsLoading] = useState(true);
+  const [roomId, setRoomId] = useState<string | null>(null);
+  const [roomPickerOpen, setRoomPickerOpen] = useState(false);
+  const [roomSearch, setRoomSearch] = useState('');
+
   // Up to 3 photos; each carries the platform-specific payload used at upload time.
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setRoomsLoading(true);
+    listRooms(token)
+      .then(setRooms)
+      .catch(() => setError('Could not load the room list. Pull to refresh and try again.'))
+      .finally(() => setRoomsLoading(false));
+  }, [token]);
+
+  const selectedRoom = rooms.find(r => r.id === roomId) ?? null;
+  const filteredRooms = roomSearch.trim()
+    ? rooms.filter(r => r.unitNumber.toLowerCase().includes(roomSearch.trim().toLowerCase()))
+    : rooms;
 
   const remaining = MAX_PHOTOS - photos.length;
 
@@ -109,6 +132,7 @@ export function CreateIssueScreen({ token }: Props) {
 
   async function handleSubmit() {
     if (title.trim().length < 3) { setError('Title must be at least 3 characters.'); return; }
+    if (!roomId) { setError('Select which room this issue is for.'); return; }
 
     setError('');
     setSubmitting(true);
@@ -118,6 +142,7 @@ export function CreateIssueScreen({ token }: Props) {
         title: title.trim(),
         category,
         priority,
+        roomId,
         ...(trimmedDesc ? { description: trimmedDesc } : {}),
       }, token);
 
@@ -217,6 +242,27 @@ export function CreateIssueScreen({ token }: Props) {
           />
         </View>
 
+        {/* Room */}
+        <View style={styles.field}>
+          <Text style={styles.label}>Room *</Text>
+          <TouchableOpacity
+            style={styles.dropdownField}
+            onPress={() => setRoomPickerOpen(true)}
+            disabled={roomsLoading}
+          >
+            <Text style={[styles.dropdownText, !selectedRoom && styles.dropdownPlaceholder]}>
+              {roomsLoading
+                ? 'Loading rooms…'
+                : selectedRoom
+                  ? `${selectedRoom.unitNumber}${selectedRoom.unitType ? ` — ${selectedRoom.unitType}` : ''}`
+                  : rooms.length === 0
+                    ? 'No rooms available — ask your manager'
+                    : 'Select a room'}
+            </Text>
+            <ChevronDown size={16} color={colors.muted} />
+          </TouchableOpacity>
+        </View>
+
         {/* Category */}
         <View style={styles.field}>
           <View style={styles.labelRow}>
@@ -265,6 +311,54 @@ export function CreateIssueScreen({ token }: Props) {
           style={styles.cta}
         />
       </ScrollView>
+
+      {/* Room picker */}
+      <Modal visible={roomPickerOpen} transparent animationType="fade" onRequestClose={() => setRoomPickerOpen(false)}>
+        <TouchableOpacity
+          style={styles.pickerOverlay}
+          activeOpacity={1}
+          onPress={() => setRoomPickerOpen(false)}
+        >
+          <TouchableOpacity activeOpacity={1} style={styles.pickerCard} onPress={e => e.stopPropagation()}>
+            <Text style={styles.pickerTitle}>Select a room</Text>
+            <TextInput
+              style={styles.pickerSearch}
+              placeholder="Search by room number…"
+              placeholderTextColor={colors.muted}
+              value={roomSearch}
+              onChangeText={setRoomSearch}
+              autoFocus
+            />
+            <ScrollView style={styles.pickerList} keyboardShouldPersistTaps="handled">
+              {filteredRooms.length === 0 ? (
+                <Text style={styles.pickerEmpty}>No rooms match "{roomSearch}".</Text>
+              ) : (
+                filteredRooms.map(room => (
+                  <TouchableOpacity
+                    key={room.id}
+                    style={[styles.pickerRow, roomId === room.id && styles.pickerRowSelected]}
+                    onPress={() => {
+                      setRoomId(room.id);
+                      setRoomPickerOpen(false);
+                      setRoomSearch('');
+                    }}
+                  >
+                    <Text style={[styles.pickerRowText, roomId === room.id && styles.pickerRowTextSelected]}>
+                      {room.unitNumber}
+                    </Text>
+                    <Text style={styles.pickerRowMeta}>
+                      {[room.floor ? `Floor ${room.floor}` : null, room.unitType].filter(Boolean).join(' · ')}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+            <TouchableOpacity style={styles.pickerCancel} onPress={() => setRoomPickerOpen(false)}>
+              <Text style={styles.pickerCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </Screen>
   );
 }
@@ -290,6 +384,63 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   textarea: { minHeight: 100 },
+  dropdownField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#D6CFC8',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  dropdownText: { fontSize: 15, color: colors.black, fontWeight: '600' },
+  dropdownPlaceholder: { color: colors.muted, fontWeight: '400' },
+  pickerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  pickerCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 18,
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '75%',
+    gap: 10,
+  },
+  pickerTitle: { fontSize: 16, fontWeight: '700', color: colors.black },
+  pickerSearch: {
+    borderWidth: 1,
+    borderColor: '#D6CFC8',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 14,
+    color: colors.black,
+    backgroundColor: '#FAFAF8',
+  },
+  pickerList: { flexGrow: 0 },
+  pickerEmpty: { fontSize: 13, color: colors.muted, textAlign: 'center', paddingVertical: 20 },
+  pickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    gap: 8,
+  },
+  pickerRowSelected: { backgroundColor: '#F6EFE8' },
+  pickerRowText: { fontSize: 14, fontWeight: '700', color: colors.black },
+  pickerRowTextSelected: { color: colors.coffee },
+  pickerRowMeta: { fontSize: 12, color: colors.muted },
+  pickerCancel: { alignItems: 'center', paddingVertical: 10 },
+  pickerCancelText: { fontSize: 13, fontWeight: '600', color: colors.muted },
   photoPlaceholder: {
     borderWidth: 1.5,
     borderColor: '#D6CFC8',

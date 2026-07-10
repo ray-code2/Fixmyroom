@@ -38,7 +38,9 @@ export function IssueCard({ issue, onPress }: Props) {
 
         <View style={styles.headerText}>
           <View style={styles.row}>
-            <Text style={styles.unit}>{issue.unitNumber ? `Unit ${issue.unitNumber}` : 'No unit'}</Text>
+            <Text style={styles.unit}>
+              {issue.ticketId} · {issue.unitNumber ? `Unit ${issue.unitNumber}` : 'No unit'}
+            </Text>
             <Text style={styles.category}>{CATEGORY_LABELS[issue.category]}</Text>
           </View>
           <Text style={styles.title} numberOfLines={2}>{issue.title}</Text>

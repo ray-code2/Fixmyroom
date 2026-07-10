@@ -12,6 +12,7 @@ import { colors } from '../theme/colors';
 import type { EmployeeProfile } from '../types/auth';
 import type { ManagerDashboard } from '../types/dashboard';
 import type { IssueSummary } from '../types/issue';
+import { formatMoneyCompact } from '../utils/currency';
 import { DashboardShell } from './DashboardShell';
 import { InfoCard } from './RoleCards';
 
@@ -21,12 +22,6 @@ function formatHours(h: number | null): string {
   if (h === null) return '—';
   if (h < 24) return `${Math.round(h)}h`;
   return `${(h / 24).toFixed(1)}d`;
-}
-
-function formatCost(v: number | null): string {
-  if (v === null || v === 0) return '$0';
-  if (v >= 1000) return `$${(v / 1000).toFixed(1)}k`;
-  return `$${v.toFixed(0)}`;
 }
 
 export function ManagerDashboardScreen({ token, employee }: { token: string; employee: EmployeeProfile }) {
@@ -74,9 +69,9 @@ export function ManagerDashboardScreen({ token, employee }: { token: string; emp
         <>
           <View style={[styles.metrics, isDesktop && styles.metricsDesktop]}>
             <MetricCard label="Open" value={String(dashboard.openIssues)} note="active issues" />
-            <MetricCard label="New" value={String(dashboard.newIssues)} note="needs assignment" />
+            <MetricCard label="New" value={String(dashboard.newIssues)} note="needs review" />
             <MetricCard label="Avg resolution" value={formatHours(dashboard.avgResolutionHours)} note="avg time from report to completion" />
-            <MetricCard label="Cost this month" value={formatCost(dashboard.costThisMonth)} note="approved costs only" />
+            <MetricCard label="Cost this month" value={formatMoneyCompact(dashboard.costThisMonth)} note="approved costs only" />
           </View>
 
           {dashboard.urgentIssues.length > 0 && (

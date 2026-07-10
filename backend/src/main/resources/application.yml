@@ -2,7 +2,7 @@ spring:
   application:
     name: fmr-api
   datasource:
-    url: ${FMR_DATASOURCE_URL:jdbc:h2:file:./data/fmr-phase1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE}
+    url: ${FMR_DATASOURCE_URL:jdbc:h2:file:./data/fmr-phase1;MODE=PostgreSQL}
     username: ${FMR_DATASOURCE_USERNAME:sa}
     password: ${FMR_DATASOURCE_PASSWORD:}
     driver-class-name: ${FMR_DATASOURCE_DRIVER:org.h2.Driver}

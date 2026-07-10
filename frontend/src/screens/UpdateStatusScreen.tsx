@@ -18,8 +18,22 @@ import { colors } from '../theme/colors';
 import type { EmployeeProfile } from '../types/auth';
 import type { IssueStatus } from '../types/issue';
 import { STATUS_LABELS } from '../types/issue';
+import { formatThousands, parseThousands } from '../utils/currency';
 
-const MANAGER_TRANSITIONS: IssueStatus[] = ['ASSIGNED', 'IN_PROGRESS', 'WAITING_PARTS', 'COMPLETED', 'CANCELLED'];
+// Mirrors the backend's MANAGER_TRANSITIONS map in IssueService exactly. NEW has no entry —
+// a NEW ticket only leaves that state via the dedicated Approve/Decline actions on
+// IssueDetailScreen, never through this generic status screen. ASSIGNED is likewise never a
+// *destination* here — assigning a technician has its own dedicated screen.
+const MANAGER_TRANSITIONS: Partial<Record<IssueStatus, IssueStatus[]>> = {
+  APPROVED: ['CANCELLED'],
+  ASSIGNED: ['IN_PROGRESS', 'CANCELLED'],
+  IN_PROGRESS: ['WAITING_PARTS', 'COMPLETED', 'CANCELLED'],
+  WAITING_PARTS: ['IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
+};
+
+// Unchanged: a technician may move their own ticket to any of these three regardless of its
+// current status (not a strict from-to pairing) — matches TECHNICIAN_ALLOWED_DESTINATIONS
+// in IssueService.
 const TECHNICIAN_TRANSITIONS: IssueStatus[] = ['IN_PROGRESS', 'WAITING_PARTS', 'COMPLETED'];
 
 interface Props {
@@ -29,9 +43,10 @@ interface Props {
   employee: EmployeeProfile;
 }
 
-function parseCost(val: string): number | undefined {
-  const n = parseFloat(val.replace(/[^0-9.]/g, ''));
-  return isNaN(n) || n <= 0 ? undefined : n;
+// The backend validates these two fields with @Positive (not @PositiveOrZero like the other
+// cost endpoints), so a typed "0" must be dropped rather than sent — otherwise it's a 400.
+function parsePositiveCost(val: string): number | undefined {
+  return parseThousands(val) || undefined;
 }
 
 export function UpdateStatusScreen({ issueId, currentStatus, token, employee }: Props) {
@@ -44,7 +59,7 @@ export function UpdateStatusScreen({ issueId, currentStatus, token, employee }: 
   const [error, setError] = useState('');
 
   const options: IssueStatus[] =
-    employee.role === 'MANAGER' ? MANAGER_TRANSITIONS : TECHNICIAN_TRANSITIONS;
+    employee.role === 'MANAGER' ? (MANAGER_TRANSITIONS[currentStatus] ?? []) : TECHNICIAN_TRANSITIONS;
 
   const showEstimate = selected === 'IN_PROGRESS';
   const showActual = selected === 'COMPLETED';
@@ -61,8 +76,8 @@ export function UpdateStatusScreen({ issueId, currentStatus, token, employee }: 
       await updateIssueStatus(issueId, {
         status: selected,
         ...(trimmedNote ? { note: trimmedNote } : {}),
-        ...(showEstimate && estimatedCostStr ? { estimatedCost: parseCost(estimatedCostStr) } : {}),
-        ...(showActual && actualCostStr ? { actualCost: parseCost(actualCostStr) } : {}),
+        ...(showEstimate && estimatedCostStr ? { estimatedCost: parsePositiveCost(estimatedCostStr) } : {}),
+        ...(showActual && actualCostStr ? { actualCost: parsePositiveCost(actualCostStr) } : {}),
       }, token);
       goBack();
       goBack();
@@ -108,17 +123,17 @@ export function UpdateStatusScreen({ issueId, currentStatus, token, employee }: 
             <View style={styles.costBox}>
               <Text style={styles.costLabel}>Estimated cost (optional)</Text>
               <Text style={styles.costHint}>
-                Enter your total estimate for parts and labour in MYR (RM).
+                Enter your total estimate for parts and labour in Rupiah (Rp).
               </Text>
               <View style={styles.costInputRow}>
-                <Text style={styles.currencySign}>RM</Text>
+                <Text style={styles.currencySign}>Rp</Text>
                 <TextInput
                   style={styles.costInput}
-                  placeholder="0.00"
+                  placeholder="0"
                   placeholderTextColor={colors.muted}
                   value={estimatedCostStr}
-                  onChangeText={setEstimatedCostStr}
-                  keyboardType="decimal-pad"
+                  onChangeText={text => setEstimatedCostStr(formatThousands(text))}
+                  keyboardType="number-pad"
                 />
               </View>
             </View>
@@ -129,17 +144,17 @@ export function UpdateStatusScreen({ issueId, currentStatus, token, employee }: 
             <View style={styles.costBox}>
               <Text style={styles.costLabel}>Actual cost (optional)</Text>
               <Text style={styles.costHint}>
-                Enter the final amount spent on parts and labour in MYR (RM).
+                Enter the final amount spent on parts and labour in Rupiah (Rp).
               </Text>
               <View style={styles.costInputRow}>
-                <Text style={styles.currencySign}>RM</Text>
+                <Text style={styles.currencySign}>Rp</Text>
                 <TextInput
                   style={styles.costInput}
-                  placeholder="0.00"
+                  placeholder="0"
                   placeholderTextColor={colors.muted}
                   value={actualCostStr}
-                  onChangeText={setActualCostStr}
-                  keyboardType="decimal-pad"
+                  onChangeText={text => setActualCostStr(formatThousands(text))}
+                  keyboardType="number-pad"
                 />
               </View>
             </View>

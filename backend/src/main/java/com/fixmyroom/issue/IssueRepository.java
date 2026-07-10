@@ -23,16 +23,27 @@ public class IssueRepository {
         this.jdbc = jdbc;
     }
 
+    // room_sequence is deliberately a correlated subquery against the *full, unfiltered* issues
+    // table — not a window function over this query's own result set — so a ticket's per-room
+    // sequence number (and therefore its ticketId) never shifts depending on which status/date
+    // filters happen to be applied to the list it's being viewed from. IS NOT DISTINCT FROM
+    // groups the (now rare, pre-required-room) NULL-room issues into their own stable sequence
+    // instead of every one of them being counted as 0.
     private static final String ISSUE_SELECT =
-            "SELECT i.id, i.business_id, i.room_id, r.room_number, i.title, i.description, " +
+            "SELECT i.id, i.business_id, b.name AS business_name, i.room_id, r.room_number, i.title, i.description, " +
             "i.category, i.priority, i.status, " +
             "i.reported_by, rep.name AS reported_by_name, " +
             "i.assigned_to, tech.name AS assigned_to_name, " +
             "i.estimated_cost, i.actual_cost, i.photo_url, " +
             "i.material_cost, i.labor_cost, i.other_cost, i.cost_notes, i.cost_status, " +
             "i.cost_submitted_by, i.cost_approved_by, i.cost_approved_at, i.cost_rejection_reason, " +
-            "i.created_at, i.updated_at, i.resolved_at " +
+            "i.created_at, i.updated_at, i.resolved_at, " +
+            "(SELECT COUNT(*) FROM issues i2 " +
+            " WHERE i2.business_id = i.business_id AND i2.room_id IS NOT DISTINCT FROM i.room_id " +
+            " AND (i2.created_at < i.created_at OR (i2.created_at = i.created_at AND i2.id <= i.id))" +
+            ") AS room_sequence " +
             "FROM issues i " +
+            "JOIN businesses b ON b.id = i.business_id " +
             "LEFT JOIN rooms r ON r.id = i.room_id " +
             "JOIN employees rep ON rep.id = i.reported_by " +
             "LEFT JOIN employees tech ON tech.id = i.assigned_to ";
@@ -84,6 +95,13 @@ public class IssueRepository {
         );
     }
 
+    public int countByRoom(UUID roomId) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM issues WHERE room_id = ?", Integer.class, roomId
+        );
+        return count == null ? 0 : count;
+    }
+
     public int countByPropertyAndStatus(UUID propertyId, IssueStatus status) {
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM issues WHERE business_id = ? AND status = ?",
@@ -95,7 +113,7 @@ public class IssueRepository {
     public int countByPropertyAndAssignedTo(UUID propertyId, UUID technicianId) {
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM issues WHERE business_id = ? AND assigned_to = ? " +
-                "AND status NOT IN ('COMPLETED','CANCELLED')",
+                "AND status NOT IN ('COMPLETED','CANCELLED','DECLINED')",
                 Integer.class, propertyId, technicianId
         );
         return count == null ? 0 : count;
@@ -103,7 +121,7 @@ public class IssueRepository {
 
     public int countOpenByProperty(UUID propertyId) {
         Integer count = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM issues WHERE business_id = ? AND status NOT IN ('COMPLETED','CANCELLED')",
+                "SELECT COUNT(*) FROM issues WHERE business_id = ? AND status NOT IN ('COMPLETED','CANCELLED','DECLINED')",
                 Integer.class, propertyId
         );
         return count == null ? 0 : count;
@@ -289,8 +307,7 @@ public class IssueRepository {
                              @Nullable BigDecimal estimatedCost,
                              @Nullable BigDecimal actualCost) {
         Instant now = Instant.now();
-        Timestamp resolvedAt = (status == IssueStatus.COMPLETED || status == IssueStatus.CANCELLED)
-                ? Timestamp.from(now) : null;
+        Timestamp resolvedAt = isTerminal(status) ? Timestamp.from(now) : null;
 
         IssueStatus previous = jdbc.query(
                 "SELECT status FROM issues WHERE id = ?",
@@ -309,13 +326,34 @@ public class IssueRepository {
         addStatusHistory(id, changedBy, previous, status, note);
     }
 
-    public void assignTechnician(UUID id, UUID technicianId, UUID changedBy) {
+    /** Only valid from APPROVED (or ASSIGNED, for reassignment) — enforced by IssueService.assign(). */
+    public void assignTechnician(UUID id, UUID technicianId, UUID changedBy, IssueStatus previousStatus) {
         Instant now = Instant.now();
         jdbc.update(
                 "UPDATE issues SET assigned_to = ?, status = 'ASSIGNED', updated_at = ? WHERE id = ?",
                 technicianId, Timestamp.from(now), id
         );
-        addStatusHistory(id, changedBy, IssueStatus.NEW, IssueStatus.ASSIGNED, null);
+        addStatusHistory(id, changedBy, previousStatus, IssueStatus.ASSIGNED, null);
+    }
+
+    /** Only valid from NEW — enforced by IssueService.approve(). */
+    public void approve(UUID id, UUID changedBy, @Nullable BigDecimal estimatedCost, @Nullable String note) {
+        jdbc.update(
+                "UPDATE issues SET status = 'APPROVED', updated_at = ?, " +
+                "estimated_cost = COALESCE(?, estimated_cost) WHERE id = ?",
+                Timestamp.from(Instant.now()), estimatedCost, id
+        );
+        addStatusHistory(id, changedBy, IssueStatus.NEW, IssueStatus.APPROVED, note);
+    }
+
+    /** Only valid from NEW — enforced by IssueService.decline(). Terminal, so resolved_at is set. */
+    public void decline(UUID id, UUID changedBy, @Nullable String reason) {
+        Instant now = Instant.now();
+        jdbc.update(
+                "UPDATE issues SET status = 'DECLINED', updated_at = ?, resolved_at = ? WHERE id = ?",
+                Timestamp.from(now), Timestamp.from(now), id
+        );
+        addStatusHistory(id, changedBy, IssueStatus.NEW, IssueStatus.DECLINED, reason);
     }
 
     public UUID addNote(UUID issueId, UUID authorId, String body) {
@@ -330,7 +368,7 @@ public class IssueRepository {
     public void seedIssue(UUID id, UUID propertyId, UUID roomId, String title, String description,
                           IssueCategory category, IssuePriority priority, IssueStatus status,
                           UUID reportedBy, UUID assignedTo, Instant createdAt) {
-        Timestamp resolvedAt = (status == IssueStatus.COMPLETED || status == IssueStatus.CANCELLED)
+        Timestamp resolvedAt = isTerminal(status)
                 ? Timestamp.from(createdAt.plusSeconds(3600)) : null;
         // Dual-write business_id + hotel_id during the rename transition window.
         jdbc.update(
@@ -362,6 +400,10 @@ public class IssueRepository {
 
     // --- Private helpers ---
 
+    private static boolean isTerminal(IssueStatus status) {
+        return status == IssueStatus.COMPLETED || status == IssueStatus.CANCELLED || status == IssueStatus.DECLINED;
+    }
+
     private void addStatusHistory(UUID issueId, UUID changedBy,
                                   @Nullable IssueStatus from, IssueStatus to, @Nullable String note) {
         jdbc.update(
@@ -383,6 +425,7 @@ public class IssueRepository {
         return new IssueRecord(
                 UUID.fromString(rs.getString("id")),
                 UUID.fromString(rs.getString("business_id")),
+                rs.getString("business_name"),
                 roomIdStr == null ? null : UUID.fromString(roomIdStr),
                 rs.getString("room_number"),
                 rs.getString("title"),
@@ -408,7 +451,8 @@ public class IssueRepository {
                 costSubmittedByStr == null ? null : UUID.fromString(costSubmittedByStr),
                 costApprovedByStr == null ? null : UUID.fromString(costApprovedByStr),
                 costApprovedAt == null ? null : costApprovedAt.toInstant(),
-                rs.getString("cost_rejection_reason")
+                rs.getString("cost_rejection_reason"),
+                rs.getInt("room_sequence")
         );
     }
 

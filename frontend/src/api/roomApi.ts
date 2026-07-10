@@ -34,6 +34,15 @@ export function bulkCreateRooms(
   return apiRequest<BulkCreateResult>('/api/rooms/bulk', { method: 'POST', body: { rooms }, token });
 }
 
-export function deactivateRoom(roomId: string, token: string): Promise<void> {
-  return apiRequest<void>(`/api/rooms/${roomId}`, { method: 'DELETE', token });
+export interface DeleteRoomResult {
+  deleted: boolean;
+  issueCount: number;
+}
+
+/**
+ * Hard-deletes the room if it has no issue history. If it does, the backend deactivates it
+ * instead (hidden from active lists, history preserved) and reports that back via `deleted: false`.
+ */
+export function deleteRoom(roomId: string, token: string): Promise<DeleteRoomResult> {
+  return apiRequest<DeleteRoomResult>(`/api/rooms/${roomId}`, { method: 'DELETE', token });
 }

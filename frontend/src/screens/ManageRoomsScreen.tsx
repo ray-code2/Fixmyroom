@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,7 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { bulkCreateRooms, createRoom, deactivateRoom, listRooms, type Room } from '../api/roomApi';
+import { Trash2 } from 'lucide-react-native';
+import { bulkCreateRooms, createRoom, deleteRoom, listRooms, type Room } from '../api/roomApi';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { Screen } from '../components/Screen';
 import { useNavigation } from '../navigation/NavigationContext';
@@ -57,13 +59,17 @@ function parseRangeExpression(raw: string): string[] {
 type Mode = 'view' | 'bulk' | 'single';
 
 export function ManageRoomsScreen({ token, employee }: { token: string; employee: EmployeeProfile }) {
-  const { goBack, navigate } = useNavigation();
+  const { navigate } = useNavigation();
   const isManager = employee.role === 'MANAGER';
 
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [mode, setMode] = useState<Mode>('view');
+
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<Room | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   // Bulk generate state
   const [rangeInput, setRangeInput] = useState('');
@@ -152,36 +158,31 @@ export function ManageRoomsScreen({ token, employee }: { token: string; employee
     }
   }
 
-  // ── Deactivate ──────────────────────────────────────────────────────────────
-  function confirmDeactivate(room: Room) {
-    Alert.alert(
-      `Deactivate Room ${room.unitNumber}?`,
-      'The room will be hidden from all dropdowns. Existing issues are kept.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Deactivate', style: 'destructive',
-          onPress: () => void (async () => {
-            try {
-              await deactivateRoom(room.id, token);
-              await load();
-            } catch {
-              Alert.alert('Error', 'Could not deactivate room.');
-            }
-          })(),
-        },
-      ],
-    );
+  // ── Delete ──────────────────────────────────────────────────────────────────
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    setDeleteSubmitting(true);
+    try {
+      const result = await deleteRoom(deleteTarget.id, token);
+      setDeleteTarget(null);
+      await load();
+      if (!result.deleted) {
+        Alert.alert(
+          'Room deactivated',
+          `Room ${deleteTarget.unitNumber} has ${result.issueCount} issue${result.issueCount !== 1 ? 's' : ''} on record, so it was deactivated instead of deleted, to keep that history intact.`,
+        );
+      }
+    } catch {
+      Alert.alert('Error', 'Could not delete room.');
+    } finally {
+      setDeleteSubmitting(false);
+    }
   }
 
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
 
-        {/* Header */}
-        <TouchableOpacity onPress={goBack} style={styles.backRow}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
         <View style={styles.titleRow}>
           <View>
             <Text style={styles.title}>Manage Rooms</Text>
@@ -371,11 +372,11 @@ export function ManageRoomsScreen({ token, employee }: { token: string; employee
                   )}
                   {isManager && (
                     <TouchableOpacity
-                      style={styles.deactivateBtn}
-                      onPress={() => confirmDeactivate(room)}
+                      style={styles.deleteBtn}
+                      onPress={() => setDeleteTarget(room)}
                       hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
                     >
-                      <Text style={styles.deactivateBtnText}>×</Text>
+                      <Trash2 size={14} color={colors.danger} />
                     </TouchableOpacity>
                   )}
                 </TouchableOpacity>
@@ -384,6 +385,40 @@ export function ManageRoomsScreen({ token, employee }: { token: string; employee
           </View>
         )}
       </ScrollView>
+
+      {/* Delete confirmation modal */}
+      <Modal visible={!!deleteTarget} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIconCircle}>
+              <Trash2 size={22} color={colors.danger} />
+            </View>
+            <Text style={styles.modalTitle}>Delete Room {deleteTarget?.unitNumber}?</Text>
+            <Text style={styles.modalSub}>
+              This removes the room completely. If it has issues on record, it will be
+              deactivated instead so that history is kept.
+            </Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => setDeleteTarget(null)}
+                disabled={deleteSubmitting}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalDelete}
+                onPress={() => void handleDeleteConfirm()}
+                disabled={deleteSubmitting}
+              >
+                {deleteSubmitting
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.modalDeleteText}>Delete</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -411,8 +446,6 @@ function TypePicker({ value, onChange }: { value: string; onChange: (v: string) 
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 16, paddingBottom: 60 },
 
-  backRow: { marginBottom: 2 },
-  backText: { color: colors.coffee, fontWeight: '600', fontSize: 14 },
 
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { fontSize: 24, fontWeight: '700', color: colors.black },
@@ -488,10 +521,45 @@ const styles = StyleSheet.create({
   roomChipNumber: { fontSize: 15, fontWeight: '700', color: colors.black },
   roomChipFloor: { fontSize: 11, color: colors.muted },
   roomChipType: { fontSize: 11, color: colors.coffee, fontWeight: '600' },
-  deactivateBtn: {
-    position: 'absolute', top: 6, right: 8,
+  deleteBtn: {
+    position: 'absolute', top: 8, right: 8,
   },
-  deactivateBtnText: { fontSize: 18, color: colors.muted, fontWeight: '400', lineHeight: 20 },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 380,
+    gap: 8,
+    alignItems: 'center',
+  },
+  modalIconCircle: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: colors.dangerBg,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 4,
+  },
+  modalTitle: { fontSize: 17, fontWeight: '700', color: colors.black, textAlign: 'center' },
+  modalSub: { fontSize: 13, color: colors.muted, textAlign: 'center', lineHeight: 19, marginBottom: 8 },
+  modalActions: { flexDirection: 'row', gap: 8, width: '100%' },
+  modalCancel: {
+    flex: 1, paddingVertical: 12, borderRadius: 10,
+    backgroundColor: '#F5F0EB', alignItems: 'center',
+  },
+  modalCancelText: { fontWeight: '700', color: colors.coffee, fontSize: 14 },
+  modalDelete: {
+    flex: 1, paddingVertical: 12, borderRadius: 10,
+    backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center',
+  },
+  modalDeleteText: { fontWeight: '700', color: '#fff', fontSize: 14 },
 
   emptyBox: {
     borderRadius: 16, borderWidth: 1.5, borderColor: colors.line,

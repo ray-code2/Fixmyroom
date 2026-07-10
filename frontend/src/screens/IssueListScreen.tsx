@@ -21,7 +21,9 @@ import { CATEGORY_LABELS } from '../types/issue';
 import { DashboardShell } from './DashboardShell';
 
 type QuickTab = 'ALL' | 'OPEN' | 'DONE';
-const OPEN_STATUSES = new Set(['NEW', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_PARTS']);
+// DECLINED is intentionally excluded — it groups with CANCELLED as closed/terminal,
+// same as before the approval gate existed (CANCELLED was never in this set either).
+const OPEN_STATUSES = new Set(['NEW', 'APPROVED', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_PARTS']);
 
 const CATEGORY_FILTERS: Array<{ label: string; value: IssueCategory | undefined }> = [
   { label: 'All', value: undefined },
@@ -63,9 +65,9 @@ export function IssueListScreen({ token, employee }: Props) {
 
   let displayed = issues;
   if (searchText.trim()) {
-    const q = searchText.toLowerCase();
+    const q = searchText.trim().toLowerCase();
     displayed = displayed.filter(i =>
-      i.title.toLowerCase().includes(q) || i.id.toLowerCase().includes(q)
+      i.title.toLowerCase().includes(q) || i.ticketId.toLowerCase().includes(q)
     );
   }
   if (quickTab === 'OPEN') displayed = displayed.filter(i => OPEN_STATUSES.has(i.status));

@@ -6,7 +6,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import type { IssueDetail } from '../../types/issue';
-import { formatIDR, calculateActualTotal } from '../../utils/currency';
+import { formatIDR, formatThousands, parseThousands, calculateActualTotal } from '../../utils/currency';
 import CostStatusBadge from './CostStatusBadge';
 import { PrimaryButton } from '../PrimaryButton';
 
@@ -20,10 +20,10 @@ interface Props {
 }
 
 export default function CostBreakdownForm({ issue, role, token, onSaved, onApprove, onReject }: Props) {
-  const [material, setMaterial] = useState(issue.materialCost?.toString() ?? '');
-  const [labor, setLabor] = useState(issue.laborCost?.toString() ?? '');
-  const [other, setOther] = useState(issue.otherCost?.toString() ?? '');
-  const [estimated, setEstimated] = useState(issue.estimatedCost?.toString() ?? '');
+  const [material, setMaterial] = useState(formatThousands(issue.materialCost?.toString() ?? ''));
+  const [labor, setLabor] = useState(formatThousands(issue.laborCost?.toString() ?? ''));
+  const [other, setOther] = useState(formatThousands(issue.otherCost?.toString() ?? ''));
+  const [estimated, setEstimated] = useState(formatThousands(issue.estimatedCost?.toString() ?? ''));
   const [notes, setNotes] = useState(issue.costNotes ?? '');
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -43,10 +43,10 @@ export default function CostBreakdownForm({ issue, role, token, onSaved, onAppro
 
   const canApproveReject = role === 'MANAGER' && issue.costStatus === 'SUBMITTED';
 
-  const parsedMaterial = parseFloat(material) || null;
-  const parsedLabor = parseFloat(labor) || null;
-  const parsedOther = parseFloat(other) || null;
-  const parsedEstimated = parseFloat(estimated) || null;
+  const parsedMaterial = parseThousands(material) ?? null;
+  const parsedLabor = parseThousands(labor) ?? null;
+  const parsedOther = parseThousands(other) ?? null;
+  const parsedEstimated = parseThousands(estimated) ?? null;
   const actualTotal = calculateActualTotal(parsedMaterial, parsedLabor, parsedOther);
 
   async function handleSave() {
@@ -121,7 +121,7 @@ export default function CostBreakdownForm({ issue, role, token, onSaved, onAppro
           <TextInput
             style={[styles.input, !canEdit && styles.inputDisabled]}
             value={estimated}
-            onChangeText={setEstimated}
+            onChangeText={text => setEstimated(formatThousands(text))}
             keyboardType="numeric"
             placeholder="0"
             editable={canEdit}
@@ -136,7 +136,7 @@ export default function CostBreakdownForm({ issue, role, token, onSaved, onAppro
           <TextInput
             style={[styles.input, !canEdit && styles.inputDisabled]}
             value={material}
-            onChangeText={setMaterial}
+            onChangeText={text => setMaterial(formatThousands(text))}
             keyboardType="numeric"
             placeholder="0"
             editable={canEdit}
@@ -147,7 +147,7 @@ export default function CostBreakdownForm({ issue, role, token, onSaved, onAppro
           <TextInput
             style={[styles.input, !canEdit && styles.inputDisabled]}
             value={labor}
-            onChangeText={setLabor}
+            onChangeText={text => setLabor(formatThousands(text))}
             keyboardType="numeric"
             placeholder="0"
             editable={canEdit}
@@ -158,7 +158,7 @@ export default function CostBreakdownForm({ issue, role, token, onSaved, onAppro
           <TextInput
             style={[styles.input, !canEdit && styles.inputDisabled]}
             value={other}
-            onChangeText={setOther}
+            onChangeText={text => setOther(formatThousands(text))}
             keyboardType="numeric"
             placeholder="0"
             editable={canEdit}

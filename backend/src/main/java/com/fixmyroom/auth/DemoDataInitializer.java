@@ -48,6 +48,8 @@ public class DemoDataInitializer implements ApplicationRunner {
     private static final UUID ISSUE_6  = UUID.fromString("b1111111-0000-0000-0000-000000000006");
     private static final UUID ISSUE_7  = UUID.fromString("b1111111-0000-0000-0000-000000000007");
     private static final UUID ISSUE_8  = UUID.fromString("b1111111-0000-0000-0000-000000000008");
+    private static final UUID ISSUE_9  = UUID.fromString("b1111111-0000-0000-0000-000000000009");
+    private static final UUID ISSUE_10 = UUID.fromString("b1111111-0000-0000-0000-000000000010");
 
     // ── Sunniress hotel — Raymond's account ──────────────────────────────────
 
@@ -184,8 +186,16 @@ public class DemoDataInitializer implements ApplicationRunner {
                     "Ceiling fan wobble", "Ceiling fan wobbles noticeably at medium and high speed. Safety risk.",
                     IssueCategory.ELECTRICAL, IssuePriority.URGENT, IssueStatus.NEW,
                     STAFF_ID, null, d3);
+            issueRepo.seedIssue(ISSUE_9, HOTEL_ID, ROOM_202,
+                    "Balcony railing loose", "Railing wobbles when touched. Flagged during routine inspection, awaiting assignment.",
+                    IssueCategory.STRUCTURAL, IssuePriority.HIGH, IssueStatus.APPROVED,
+                    STAFF_ID, null, d2);
+            issueRepo.seedIssue(ISSUE_10, HOTEL_ID, ROOM_302,
+                    "Extra pillows requested", "Logged as an issue by mistake — this is a guest amenity request, not a repair.",
+                    IssueCategory.OTHER, IssuePriority.LOW, IssueStatus.DECLINED,
+                    STAFF_ID, null, d3);
 
-            log.info("Seeded 8 demo issues for FMR Demo property");
+            log.info("Seeded 10 demo issues for FMR Demo property");
         }
     }
 

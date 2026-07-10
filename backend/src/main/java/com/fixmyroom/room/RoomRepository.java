@@ -56,6 +56,11 @@ public class RoomRepository {
         jdbc.update("UPDATE rooms SET active = FALSE WHERE id = ?", id);
     }
 
+    /** Hard delete — only safe to call once the caller has confirmed no issues reference this room. */
+    public void deleteRoom(UUID id) {
+        jdbc.update("DELETE FROM rooms WHERE id = ?", id);
+    }
+
     public UUID createRoom(UUID propertyId, String unitNumber, String floor, String unitType) {
         return createRoom(UUID.randomUUID(), propertyId, unitNumber, floor, unitType);
     }

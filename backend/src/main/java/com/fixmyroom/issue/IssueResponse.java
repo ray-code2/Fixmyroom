@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public record IssueResponse(
         UUID id,
+        String ticketId,
         UUID roomId,
         String unitNumber,
         String title,
@@ -43,7 +44,7 @@ public record IssueResponse(
 
     public static IssueResponse from(IssueRecord r, List<NoteResponse> notes, List<String> photoUrls) {
         return new IssueResponse(
-                r.id(), r.roomId(), r.unitNumber(), r.title(), r.description(),
+                r.id(), r.ticketId(), r.roomId(), r.unitNumber(), r.title(), r.description(),
                 r.category(), r.priority(), r.status(),
                 r.reportedById(), r.reportedByName(),
                 r.assignedToId(), r.assignedToName(),

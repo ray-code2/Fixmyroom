@@ -1,6 +1,8 @@
 import type {
+  IssueApprovePayload,
   IssueAssignPayload,
   IssueCreatePayload,
+  IssueDeclinePayload,
   IssueDetail,
   IssueSummary,
   IssueStatus,
@@ -52,6 +54,32 @@ export function assignIssue(
 ): Promise<IssueDetail> {
   return apiRequest<IssueDetail>(`/api/issues/${id}/assign`, {
     method: 'PATCH',
+    body: payload,
+    token,
+  });
+}
+
+/** Manager-only: moves a NEW ticket to APPROVED, clearing it for assignment. */
+export function approveIssue(
+  id: string,
+  payload: IssueApprovePayload,
+  token: string
+): Promise<IssueDetail> {
+  return apiRequest<IssueDetail>(`/api/issues/${id}/approve`, {
+    method: 'POST',
+    body: payload,
+    token,
+  });
+}
+
+/** Manager-only: moves a NEW ticket to DECLINED (terminal — not a real maintenance issue). */
+export function declineIssue(
+  id: string,
+  payload: IssueDeclinePayload,
+  token: string
+): Promise<IssueDetail> {
+  return apiRequest<IssueDetail>(`/api/issues/${id}/decline`, {
+    method: 'POST',
     body: payload,
     token,
   });

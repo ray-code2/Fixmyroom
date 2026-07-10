@@ -4,6 +4,8 @@ import { STATUS_LABELS } from '../../types/issue';
 
 const STATUS_COLORS: Record<IssueStatus, { bg: string; text: string }> = {
   NEW:           { bg: '#EFF6FF', text: '#2563EB' },
+  APPROVED:      { bg: '#E6F9ED', text: '#166534' },
+  DECLINED:      { bg: '#FEF2F2', text: '#991B1B' },
   ASSIGNED:      { bg: '#F6EFE8', text: '#7C4B2A' },
   IN_PROGRESS:   { bg: '#FFF7ED', text: '#C2610C' },
   WAITING_PARTS: { bg: '#FEF9C3', text: '#92400E' },

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { getDashboard } from '../api/dashboardApi';
 import { listIssues } from '../api/issueApi';
 import { StatusBadge } from '../components/issue/StatusBadge';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { useNavigation } from '../navigation/NavigationContext';
 import { colors } from '../theme/colors';
 import type { EmployeeProfile } from '../types/auth';
+import type { ManagerContact, StaffDashboard } from '../types/dashboard';
 import type { IssueSummary } from '../types/issue';
 import { DashboardShell } from './DashboardShell';
 
@@ -28,11 +30,17 @@ function greeting(): string {
   return 'Good evening';
 }
 
-const OPEN_STATUSES = new Set(['NEW', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_PARTS']);
+function initials(name: string): string {
+  return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+}
+
+// DECLINED intentionally excluded — groups with CANCELLED as closed/terminal.
+const OPEN_STATUSES = new Set(['NEW', 'APPROVED', 'ASSIGNED', 'IN_PROGRESS', 'WAITING_PARTS']);
 
 export function StaffDashboardScreen({ token, employee }: { token: string; employee: EmployeeProfile }) {
   const { navigate } = useNavigation();
   const [issues, setIssues] = useState<IssueSummary[]>([]);
+  const [managers, setManagers] = useState<ManagerContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -40,8 +48,12 @@ export function StaffDashboardScreen({ token, employee }: { token: string; emplo
     setLoading(true);
     setError('');
     try {
-      const all = await listIssues(token);
+      const [all, dashboard] = await Promise.all([
+        listIssues(token),
+        getDashboard('STAFF', token),
+      ]);
       setIssues(all.filter(i => i.reportedByName === employee.name));
+      setManagers((dashboard as StaffDashboard).managers);
     } catch {
       setError('Could not load your reports.');
     } finally {
@@ -62,7 +74,7 @@ export function StaffDashboardScreen({ token, employee }: { token: string; emplo
     <DashboardShell
       employee={employee}
       title={`${greeting()}, ${firstName}.`}
-      subtitle="Spot a problem? Report it in seconds — your manager is notified instantly."
+      subtitle={`Spot a problem? Report it in seconds — your ${managers.length > 1 ? 'managers are' : 'manager is'} notified instantly.`}
       refreshing={loading}
       onRefresh={load}
     >
@@ -84,6 +96,33 @@ export function StaffDashboardScreen({ token, employee }: { token: string; emplo
         </View>
       </View>
 
+      {managers.length > 0 && (
+        <View style={s.section}>
+          <Text style={s.sectionLabel}>
+            Report to{managers.length > 1 ? ` (${managers.length})` : ''}
+          </Text>
+          {managers.map(m => (
+            <View key={m.id} style={s.managerCard}>
+              <View style={s.managerAvatar}>
+                <Text style={s.managerAvatarText}>{initials(m.name)}</Text>
+              </View>
+              <View style={s.managerInfo}>
+                <Text style={s.managerName}>{m.name}</Text>
+                <Text style={s.managerMeta} numberOfLines={1}>{m.email}</Text>
+              </View>
+              {m.phone && (
+                <TouchableOpacity
+                  style={s.managerCallBtn}
+                  onPress={() => void Linking.openURL(`tel:${m.phone}`)}
+                >
+                  <Text style={s.managerCallText}>Call</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
+
       <PrimaryButton
         label="+ Report New Issue"
         onPress={() => navigate({ name: 'CreateIssue' })}
@@ -101,7 +140,7 @@ export function StaffDashboardScreen({ token, employee }: { token: string; emplo
             >
               <View style={s.issueText}>
                 <Text style={s.issueTitle} numberOfLines={1}>{issue.title}</Text>
-                <Text style={s.issueMeta}>{timeAgo(issue.createdAt)}</Text>
+                <Text style={s.issueMeta}>{issue.ticketId} · {timeAgo(issue.createdAt)}</Text>
               </View>
               <StatusBadge status={issue.status} />
             </TouchableOpacity>
@@ -156,6 +195,37 @@ const s = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
+  managerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: 10,
+  },
+  managerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.coffee,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  managerAvatarText: { fontSize: 12, fontWeight: '700', color: colors.white },
+  managerInfo: { flex: 1, gap: 1 },
+  managerName: { fontSize: 14, fontWeight: '700', color: colors.black },
+  managerMeta: { fontSize: 12, color: colors.muted },
+  managerCallBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: colors.ivory,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  managerCallText: { fontSize: 12, fontWeight: '700', color: colors.coffee },
   issueRow: {
     flexDirection: 'row',
     alignItems: 'center',

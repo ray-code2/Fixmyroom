@@ -1,6 +1,7 @@
 package com.fixmyroom.room;
 
 import com.fixmyroom.common.JwtTenant;
+import com.fixmyroom.issue.IssueRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,9 +18,11 @@ import java.util.UUID;
 public class RoomController {
 
     private final RoomRepository roomRepository;
+    private final IssueRepository issueRepository;
 
-    public RoomController(RoomRepository roomRepository) {
+    public RoomController(RoomRepository roomRepository, IssueRepository issueRepository) {
         this.roomRepository = roomRepository;
+        this.issueRepository = issueRepository;
     }
 
     @GetMapping
@@ -87,13 +90,25 @@ public class RoomController {
         return new BulkCreateResponse(created, skipped);
     }
 
+    /**
+     * Hard-deletes the room if nothing references it. If issues have been reported against it,
+     * deleting would either violate the room_id foreign key or silently erase which room those
+     * issues were about — so it falls back to the existing deactivate (hide from active lists,
+     * history preserved) instead, and tells the caller which one happened.
+     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('MANAGER')")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deactivateRoom(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+    public DeleteRoomResponse deleteRoom(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         roomRepository.findByIdAndProperty(id, JwtTenant.businessId(jwt))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found."));
+
+        int issueCount = issueRepository.countByRoom(id);
+        if (issueCount == 0) {
+            roomRepository.deleteRoom(id);
+            return new DeleteRoomResponse(true, 0);
+        }
         roomRepository.deactivateRoom(id);
+        return new DeleteRoomResponse(false, issueCount);
     }
 
     private static String blank(String v) {
@@ -101,4 +116,6 @@ public class RoomController {
     }
 
     public record BulkCreateResponse(int created, int skipped) {}
+
+    public record DeleteRoomResponse(boolean deleted, int issueCount) {}
 }

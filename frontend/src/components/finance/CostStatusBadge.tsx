@@ -5,11 +5,14 @@ interface Props {
   status: CostStatus | null | undefined;
 }
 
+// Labeled "Cost approved/rejected" rather than plain "Approved/Rejected" — this badge sits
+// next to the ticket-level StatusBadge (which has its own, unrelated APPROVED/DECLINED),
+// and the two must never be mistaken for each other.
 const CONFIG: Record<CostStatus, { label: string; bg: string; text: string }> = {
-  DRAFT:     { label: 'Draft',     bg: '#f0f0f0', text: '#555' },
-  SUBMITTED: { label: 'Pending',   bg: '#fff7e6', text: '#b45309' },
-  APPROVED:  { label: 'Approved',  bg: '#e6f9ed', text: '#166534' },
-  REJECTED:  { label: 'Rejected',  bg: '#fef2f2', text: '#991b1b' },
+  DRAFT:     { label: 'Draft',          bg: '#f0f0f0', text: '#555' },
+  SUBMITTED: { label: 'Pending',        bg: '#fff7e6', text: '#b45309' },
+  APPROVED:  { label: 'Cost approved',  bg: '#e6f9ed', text: '#166534' },
+  REJECTED:  { label: 'Cost rejected',  bg: '#fef2f2', text: '#991b1b' },
 };
 
 export default function CostStatusBadge({ status }: Props) {

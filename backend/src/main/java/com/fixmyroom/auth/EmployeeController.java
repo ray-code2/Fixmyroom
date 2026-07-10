@@ -68,7 +68,7 @@ public class EmployeeController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void resetPassword(
             @PathVariable UUID id,
-            @Valid @RequestBody ResetPasswordRequest request,
+            @Valid @RequestBody EmployeeResetPasswordRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         UUID businessId = JwtTenant.businessId(jwt);
         authService.resetEmployeePassword(id, businessId, request.newPassword());

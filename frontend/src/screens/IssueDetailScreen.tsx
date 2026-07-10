@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { approveIssueCost, rejectIssueCost, photoUrl } from '../api/issueApi';
+import { approveIssue, approveIssueCost, declineIssue, rejectIssueCost, photoUrl } from '../api/issueApi';
 import CostBreakdownForm from '../components/finance/CostBreakdownForm';
 
 function formatDate(dateStr: string) {
@@ -40,6 +40,7 @@ import { colors } from '../theme/colors';
 import type { EmployeeProfile } from '../types/auth';
 import type { IssueDetail } from '../types/issue';
 import { CATEGORY_LABELS } from '../types/issue';
+import { formatThousands, parseThousands } from '../utils/currency';
 
 interface Props {
   issueId: string;
@@ -59,6 +60,14 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
   const [rejectReason, setRejectReason] = useState('');
   const [rejectSubmitting, setRejectSubmitting] = useState(false);
   const [lightbox, setLightbox] = useState<string | null>(null);
+
+  // Ticket-level approve/decline (the gate from NEW) — separate from cost approve/reject above.
+  const [approveTicketModalVisible, setApproveTicketModalVisible] = useState(false);
+  const [approveTicketEstimateStr, setApproveTicketEstimateStr] = useState('');
+  const [approveTicketSubmitting, setApproveTicketSubmitting] = useState(false);
+  const [declineTicketModalVisible, setDeclineTicketModalVisible] = useState(false);
+  const [declineTicketReason, setDeclineTicketReason] = useState('');
+  const [declineTicketSubmitting, setDeclineTicketSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
@@ -89,7 +98,7 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
     }
   }
 
-  async function handleApprove() {
+  async function handleApproveCost() {
     if (!issue) return;
     try {
       const updated = await approveIssueCost(issue.id, token);
@@ -114,12 +123,56 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
     }
   }
 
+  async function handleApproveTicketConfirm() {
+    if (!issue) return;
+    setApproveTicketSubmitting(true);
+    try {
+      const parsed = parseThousands(approveTicketEstimateStr);
+      const updated = await approveIssue(
+        issue.id,
+        parsed !== undefined ? { estimatedCost: parsed } : {},
+        token
+      );
+      setIssue(updated);
+      setApproveTicketModalVisible(false);
+      setApproveTicketEstimateStr('');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Approve failed.');
+    } finally {
+      setApproveTicketSubmitting(false);
+    }
+  }
+
+  async function handleDeclineTicketConfirm() {
+    if (!issue) return;
+    setDeclineTicketSubmitting(true);
+    try {
+      const reason = declineTicketReason.trim();
+      const updated = await declineIssue(issue.id, reason ? { reason } : {}, token);
+      setIssue(updated);
+      setDeclineTicketModalVisible(false);
+      setDeclineTicketReason('');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Decline failed.');
+    } finally {
+      setDeclineTicketSubmitting(false);
+    }
+  }
+
   const isManager = employee.role === 'MANAGER';
+
+  // A NEW ticket has no valid generic-PATCH destination (see backend transition map) —
+  // it can only leave NEW via the dedicated approve/decline actions below.
   const canUpdateStatus =
-    isManager ||
+    (isManager && issue?.status !== 'NEW') ||
     (employee.role === 'TECHNICIAN' && issue?.assignedToId === employee.id);
 
-  const isDone = issue?.status === 'COMPLETED' || issue?.status === 'CANCELLED';
+  const isDone = issue?.status === 'COMPLETED' || issue?.status === 'CANCELLED' || issue?.status === 'DECLINED';
+
+  // Matches the backend assign() gate exactly: APPROVED (first assignment) or ASSIGNED
+  // (reassignment) — IN_PROGRESS/WAITING_PARTS/etc. can no longer be reassigned this way.
+  const canAssignInitial = isManager && issue?.status === 'APPROVED';
+  const canReassign = isManager && issue?.status === 'ASSIGNED';
 
   // Prefer the new multi-photo list; fall back to the legacy single photoUrl.
   const gallery = issue
@@ -163,11 +216,9 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
             {/* Title & meta */}
             <View style={styles.section}>
               <View style={styles.unitRow}>
-                {issue.unitNumber ? (
-                  <Text style={styles.unit}>Unit {issue.unitNumber}</Text>
-                ) : (
-                  <View />
-                )}
+                <Text style={styles.unit}>
+                  {issue.ticketId}{issue.unitNumber ? ` · Unit ${issue.unitNumber}` : ''}
+                </Text>
                 <Text style={styles.reportedDate}>
                   {timeAgo(issue.createdAt)} · {formatDate(issue.createdAt)}
                 </Text>
@@ -201,7 +252,7 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
               ) : (
                 <View style={styles.unassignedRow}>
                   <Text style={styles.unassignedText}>Not yet assigned</Text>
-                  {isManager && !isDone && (
+                  {canAssignInitial && (
                     <TouchableOpacity
                       style={styles.assignInline}
                       onPress={() => navigate({ name: 'AssignTechnician', issueId: issue.id })}
@@ -212,8 +263,8 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
                 </View>
               )}
 
-              {/* Re-assign button when already assigned but manager wants to change */}
-              {isManager && issue.assignedToName && !isDone && (
+              {/* Re-assign — only while ASSIGNED (before work starts); matches the backend gate */}
+              {canReassign && (
                 <TouchableOpacity
                   style={styles.reassignBtn}
                   onPress={() => navigate({ name: 'AssignTechnician', issueId: issue.id })}
@@ -223,6 +274,24 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
               )}
             </View>
 
+            {/* Ticket-level approve/decline gate — MANAGER, NEW only */}
+            {isManager && issue.status === 'NEW' && (
+              <View style={styles.approvalRow}>
+                <PrimaryButton
+                  label="Approve"
+                  variant="success"
+                  style={styles.flex1}
+                  onPress={() => setApproveTicketModalVisible(true)}
+                />
+                <PrimaryButton
+                  label="Decline"
+                  variant="destructive"
+                  style={styles.flex1}
+                  onPress={() => setDeclineTicketModalVisible(true)}
+                />
+              </View>
+            )}
+
             {/* Cost breakdown — visible to assigned technician or manager */}
             {(isManager || (employee.role === 'TECHNICIAN' && issue.assignedToId === employee.id)) && (
               <CostBreakdownForm
@@ -230,7 +299,7 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
                 role={isManager ? 'MANAGER' : 'TECHNICIAN'}
                 token={token}
                 onSaved={setIssue}
-                onApprove={handleApprove}
+                onApprove={handleApproveCost}
                 onReject={() => setRejectModalVisible(true)}
               />
             )}
@@ -300,6 +369,81 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
         )}
       </ScrollView>
 
+      {/* Approve ticket modal */}
+      <Modal visible={approveTicketModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Approve Ticket</Text>
+            <Text style={styles.modalSub}>Confirms this is a genuine maintenance issue. Estimated cost is optional.</Text>
+            <View style={styles.costInputRow}>
+              <Text style={styles.currencySign}>Rp</Text>
+              <TextInput
+                style={styles.costInput}
+                placeholder="0"
+                placeholderTextColor={colors.muted}
+                value={approveTicketEstimateStr}
+                onChangeText={text => setApproveTicketEstimateStr(formatThousands(text))}
+                keyboardType="number-pad"
+              />
+            </View>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => { setApproveTicketModalVisible(false); setApproveTicketEstimateStr(''); }}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalApprove}
+                onPress={handleApproveTicketConfirm}
+                disabled={approveTicketSubmitting}
+              >
+                {approveTicketSubmitting
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.modalConfirmText}>Approve</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Decline ticket modal */}
+      <Modal visible={declineTicketModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Decline Ticket</Text>
+            <Text style={styles.modalSub}>This ticket won't proceed to assignment. Reason is optional.</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="e.g. duplicate report, not a real issue…"
+              placeholderTextColor={colors.muted}
+              value={declineTicketReason}
+              onChangeText={setDeclineTicketReason}
+              multiline
+              numberOfLines={3}
+              maxLength={280}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => { setDeclineTicketModalVisible(false); setDeclineTicketReason(''); }}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirm}
+                onPress={handleDeclineTicketConfirm}
+                disabled={declineTicketSubmitting}
+              >
+                {declineTicketSubmitting
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.modalConfirmText}>Decline</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* Reject reason modal */}
       <Modal visible={rejectModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
@@ -357,6 +501,8 @@ const styles = StyleSheet.create({
   error: { color: colors.danger, fontWeight: '600', fontSize: 13 },
 
   section: { gap: 6 },
+  approvalRow: { flexDirection: 'row', gap: 8 },
+  flex1: { flex: 1 },
   unitRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   unit: {
     fontSize: 12,
@@ -476,6 +622,24 @@ const styles = StyleSheet.create({
   },
   modalConfirmDisabled: { backgroundColor: '#ddd' },
   modalConfirmText: { fontWeight: '700', color: '#fff', fontSize: 14 },
+  modalApprove: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: colors.success,
+    minWidth: 72,
+    alignItems: 'center',
+  },
+  costInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2d9d0',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+  },
+  currencySign: { fontSize: 15, fontWeight: '700', color: colors.coffee, marginRight: 6 },
+  costInput: { flex: 1, paddingVertical: 10, fontSize: 16, fontWeight: '700', color: '#2d1f18' },
 
   resolvedRow: {
     backgroundColor: colors.successBg,

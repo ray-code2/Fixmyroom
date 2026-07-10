@@ -16,6 +16,8 @@ export type IssuePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 
 export type IssueStatus =
   | 'NEW'
+  | 'APPROVED'
+  | 'DECLINED'
   | 'ASSIGNED'
   | 'IN_PROGRESS'
   | 'WAITING_PARTS'
@@ -39,6 +41,8 @@ export interface NoteSummary {
 
 export interface IssueSummary {
   id: string;
+  /** Server-generated, human-readable reference — e.g. "FMR-SUN-101-00001". Stable regardless of filters. */
+  ticketId: string;
   unitNumber: string | null;
   title: string;
   description: string | null;
@@ -95,6 +99,15 @@ export interface IssueAssignPayload {
   technicianId: string;
 }
 
+export interface IssueApprovePayload {
+  estimatedCost?: number;
+  note?: string;
+}
+
+export interface IssueDeclinePayload {
+  reason?: string;
+}
+
 export const CATEGORY_LABELS: Record<IssueCategory, string> = {
   PLUMBING: 'Plumbing',
   ELECTRICAL: 'Electrical',
@@ -117,6 +130,8 @@ export const PRIORITY_LABELS: Record<IssuePriority, string> = {
 
 export const STATUS_LABELS: Record<IssueStatus, string> = {
   NEW: 'New',
+  APPROVED: 'Approved',
+  DECLINED: 'Declined',
   ASSIGNED: 'Assigned',
   IN_PROGRESS: 'In Progress',
   WAITING_PARTS: 'Waiting Parts',
