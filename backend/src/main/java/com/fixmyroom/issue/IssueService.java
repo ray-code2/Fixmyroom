@@ -137,6 +137,23 @@ public class IssueService {
         validateStatusTransition(record, req.status(), role, changedBy);
 
         issueRepo.updateStatus(id, req.status(), changedBy, req.note(), req.estimatedCost(), req.actualCost());
+
+        // Completing a ticket pushes any un-submitted cost into the manager's approval
+        // queue automatically — otherwise technicians finish the job, forget to tap
+        // "Submit", and the cost sits in DRAFT forever without ever reaching finance.
+        // REJECTED costs are deliberately NOT auto-resubmitted: they need editing first.
+        if (req.status() == IssueStatus.COMPLETED) {
+            IssueRecord after = issueRepo.findByIdAndProperty(id, propertyId).orElseThrow();
+            boolean hasCost = after.materialCost() != null || after.laborCost() != null
+                    || after.otherCost() != null || after.actualCost() != null;
+            boolean unsubmitted = after.costStatus() == null || after.costStatus() == CostStatus.DRAFT;
+            if (hasCost && unsubmitted) {
+                issueRepo.submitCost(id);
+                List<String> managerEmails = employeeRepo.findManagerEmailsByBusiness(propertyId);
+                emailService.sendCostSubmittedNotification(managerEmails, after.title());
+            }
+        }
+
         return get(id, propertyId);
     }
 

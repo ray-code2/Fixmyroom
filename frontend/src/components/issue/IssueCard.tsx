@@ -47,7 +47,7 @@ export const IssueCard = memo(function IssueCard({ issue, onOpen }: Props) {
 
       <View style={styles.footer}>
         {issue.assignedToName ? (
-          <Text style={styles.meta}>→ {issue.assignedToName}</Text>
+          <Text style={styles.meta}>Technician: {issue.assignedToName}</Text>
         ) : (
           <Text style={[styles.meta, styles.unassigned]}>Unassigned</Text>
         )}
