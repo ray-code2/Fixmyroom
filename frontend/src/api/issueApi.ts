@@ -13,16 +13,23 @@ import type { IssueCostPayload } from './financeApi';
 import { API_BASE_URL } from '../config/env';
 import { ApiClientError, apiRequest } from './http';
 
-export function listIssues(
-  token: string,
-  status?: IssueStatus,
-  from?: string | null,
-  to?: string | null,
-): Promise<IssueSummary[]> {
+export type ListIssuesOptions = {
+  status?: IssueStatus;
+  /** Only issues reported by the current user — filtered server-side. */
+  mine?: boolean;
+  /** Only issues for one room — filtered server-side. */
+  roomId?: string;
+  from?: string | null;
+  to?: string | null;
+};
+
+export function listIssues(token: string, options: ListIssuesOptions = {}): Promise<IssueSummary[]> {
   const params = new URLSearchParams();
-  if (status) params.set('status', status);
-  if (from)   params.set('from', from);
-  if (to)     params.set('to', to);
+  if (options.status) params.set('status', options.status);
+  if (options.mine)   params.set('mine', 'true');
+  if (options.roomId) params.set('roomId', options.roomId);
+  if (options.from)   params.set('from', options.from);
+  if (options.to)     params.set('to', options.to);
   const query = params.size ? `?${params.toString()}` : '';
   return apiRequest<IssueSummary[]>(`/api/issues${query}`, { token });
 }

@@ -67,8 +67,15 @@ export function ManageRoomsScreen({ token, employee }: { token: string; employee
   const [error, setError] = useState('');
   const [mode, setMode] = useState<Mode>('view');
 
-  // Delete confirmation
+  // Search & type filter for the room grid
+  const [roomSearch, setRoomSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+
+  // Delete confirmation. Visibility is separate from the target: the target must
+  // survive the modal's fade-out, otherwise the title flashes "Delete Room ?"
+  // (room number gone) for the duration of the closing animation.
   const [deleteTarget, setDeleteTarget] = useState<Room | null>(null);
+  const [deleteVisible, setDeleteVisible] = useState(false);
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   // Bulk generate state
@@ -86,6 +93,14 @@ export function ManageRoomsScreen({ token, employee }: { token: string; employee
   const [singleError, setSingleError] = useState('');
 
   const preview = useMemo(() => parseRangeExpression(rangeInput), [rangeInput]);
+
+  const visibleRooms = useMemo(() => {
+    const q = roomSearch.trim().toLowerCase();
+    return rooms.filter(room =>
+      (!q || room.unitNumber.toLowerCase().includes(q)) &&
+      (!typeFilter || room.unitType === typeFilter)
+    );
+  }, [rooms, roomSearch, typeFilter]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -164,7 +179,7 @@ export function ManageRoomsScreen({ token, employee }: { token: string; employee
     setDeleteSubmitting(true);
     try {
       const result = await deleteRoom(deleteTarget.id, token);
-      setDeleteTarget(null);
+      setDeleteVisible(false); // keep deleteTarget so the title stays intact while fading out
       await load();
       if (!result.deleted) {
         Alert.alert(
@@ -249,7 +264,9 @@ export function ManageRoomsScreen({ token, employee }: { token: string; employee
                   placeholder="e.g. 1"
                   placeholderTextColor={colors.muted}
                   value={bulkFloor}
-                  onChangeText={setBulkFloor}
+                  onChangeText={text => setBulkFloor(text.replace(/[^0-9]/g, ''))}
+                  keyboardType="number-pad"
+                  maxLength={4}
                 />
               </View>
               <View style={styles.halfField}>
@@ -314,7 +331,9 @@ export function ManageRoomsScreen({ token, employee }: { token: string; employee
                   placeholder="e.g. 1"
                   placeholderTextColor={colors.muted}
                   value={singleFloor}
-                  onChangeText={setSingleFloor}
+                  onChangeText={text => setSingleFloor(text.replace(/[^0-9]/g, ''))}
+                  keyboardType="number-pad"
+                  maxLength={4}
                 />
               </View>
               <View style={styles.halfField}>
@@ -354,40 +373,77 @@ export function ManageRoomsScreen({ token, employee }: { token: string; employee
 
         {rooms.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>All rooms</Text>
-            <View style={styles.chipGrid}>
-              {rooms.map(room => (
+            {/* Search + type filter */}
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search room number…"
+              placeholderTextColor={colors.muted}
+              value={roomSearch}
+              onChangeText={setRoomSearch}
+              clearButtonMode="while-editing"
+              autoCapitalize="characters"
+            />
+            <View style={styles.filterRow}>
+              {[null, ...ROOM_TYPES].map(t => (
                 <TouchableOpacity
-                  key={room.id}
-                  style={styles.roomChip}
-                  onPress={() => navigate({ name: 'RoomDetail', roomId: room.id })}
-                  activeOpacity={0.75}
+                  key={t ?? 'ALL'}
+                  style={[styles.filterChip, typeFilter === t && styles.filterChipActive]}
+                  onPress={() => setTypeFilter(t)}
                 >
-                  <Text style={styles.roomChipNumber}>{room.unitNumber}</Text>
-                  {room.floor && (
-                    <Text style={styles.roomChipFloor}>Floor {room.floor}</Text>
-                  )}
-                  {room.unitType && (
-                    <Text style={styles.roomChipType}>{room.unitType}</Text>
-                  )}
-                  {isManager && (
-                    <TouchableOpacity
-                      style={styles.deleteBtn}
-                      onPress={() => setDeleteTarget(room)}
-                      hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                    >
-                      <Trash2 size={14} color={colors.danger} />
-                    </TouchableOpacity>
-                  )}
+                  <Text style={[styles.filterChipText, typeFilter === t && styles.filterChipTextActive]}>
+                    {t ?? 'All'}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
+
+            <Text style={styles.sectionLabel}>
+              {visibleRooms.length === rooms.length
+                ? 'All rooms'
+                : `${visibleRooms.length} of ${rooms.length} rooms`}
+            </Text>
+
+            {visibleRooms.length === 0 ? (
+              <View style={styles.emptyBox}>
+                <Text style={styles.emptyText}>
+                  No rooms match{roomSearch.trim() ? ` "${roomSearch.trim()}"` : ''}{typeFilter ? ` in ${typeFilter}` : ''}.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.chipGrid}>
+                {visibleRooms.map(room => (
+                  <TouchableOpacity
+                    key={room.id}
+                    style={styles.roomChip}
+                    onPress={() => navigate({ name: 'RoomDetail', roomId: room.id })}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={styles.roomChipNumber}>{room.unitNumber}</Text>
+                    {room.floor && (
+                      <Text style={styles.roomChipFloor}>Floor {room.floor}</Text>
+                    )}
+                    {room.unitType && (
+                      <Text style={styles.roomChipType}>{room.unitType}</Text>
+                    )}
+                    {isManager && (
+                      <TouchableOpacity
+                        style={styles.deleteBtn}
+                        onPress={() => { setDeleteTarget(room); setDeleteVisible(true); }}
+                        hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+                      >
+                        <Trash2 size={14} color={colors.danger} />
+                      </TouchableOpacity>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
 
       {/* Delete confirmation modal */}
-      <Modal visible={!!deleteTarget} transparent animationType="fade">
+      <Modal visible={deleteVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalIconCircle}>
@@ -401,7 +457,7 @@ export function ManageRoomsScreen({ token, employee }: { token: string; employee
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.modalCancel}
-                onPress={() => setDeleteTarget(null)}
+                onPress={() => setDeleteVisible(false)}
                 disabled={deleteSubmitting}
               >
                 <Text style={styles.modalCancelText}>Cancel</Text>
@@ -444,7 +500,30 @@ function TypePicker({ value, onChange }: { value: string; onChange: (v: string) 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { padding: 20, gap: 16, paddingBottom: 60 },
+  container: { padding: 20, gap: 16, paddingBottom: 60, maxWidth: 760, width: '100%', alignSelf: 'center' },
+
+  searchInput: {
+    height: 44,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    fontSize: 14,
+    color: colors.black,
+    backgroundColor: '#fff',
+  },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: '#FAFAF8',
+  },
+  filterChipActive: { backgroundColor: colors.coffee, borderColor: colors.coffee },
+  filterChipText: { fontSize: 12, fontWeight: '600', color: colors.muted },
+  filterChipTextActive: { color: '#fff' },
 
 
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

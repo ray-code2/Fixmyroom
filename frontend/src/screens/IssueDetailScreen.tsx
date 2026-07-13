@@ -12,24 +12,7 @@ import {
 } from 'react-native';
 import { approveIssue, approveIssueCost, declineIssue, rejectIssueCost, photoUrl } from '../api/issueApi';
 import CostBreakdownForm from '../components/finance/CostBreakdownForm';
-
-function formatDate(dateStr: string) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-  if (mins < 2) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days === 1) return 'Yesterday';
-  if (days < 7) return `${days}d ago`;
-  return formatDate(dateStr);
-}
+import { formatDate, timeAgo } from '../utils/datetime';
 import { addNote, getIssue } from '../api/issueApi';
 import { PriorityBadge } from '../components/issue/PriorityBadge';
 import { StatusBadge } from '../components/issue/StatusBadge';
@@ -233,6 +216,37 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
               </View>
             </View>
 
+            {/* Primary actions — kept directly under the header so the next step in the
+                workflow is visible without scrolling past cost/notes. */}
+            {isManager && issue.status === 'NEW' && (
+              <View style={styles.approvalRow}>
+                <PrimaryButton
+                  label="Approve"
+                  variant="success"
+                  style={styles.flex1}
+                  onPress={() => setApproveTicketModalVisible(true)}
+                />
+                <PrimaryButton
+                  label="Decline"
+                  variant="destructive"
+                  style={styles.flex1}
+                  onPress={() => setDeclineTicketModalVisible(true)}
+                />
+              </View>
+            )}
+            {canUpdateStatus && !isDone && (
+              <PrimaryButton
+                label="Update Status"
+                onPress={() =>
+                  navigate({
+                    name: 'UpdateStatus',
+                    issueId: issue.id,
+                    currentStatus: issue.status,
+                  })
+                }
+              />
+            )}
+
             {/* Description */}
             {issue.description ? (
               <View style={styles.section}>
@@ -274,24 +288,6 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
               )}
             </View>
 
-            {/* Ticket-level approve/decline gate — MANAGER, NEW only */}
-            {isManager && issue.status === 'NEW' && (
-              <View style={styles.approvalRow}>
-                <PrimaryButton
-                  label="Approve"
-                  variant="success"
-                  style={styles.flex1}
-                  onPress={() => setApproveTicketModalVisible(true)}
-                />
-                <PrimaryButton
-                  label="Decline"
-                  variant="destructive"
-                  style={styles.flex1}
-                  onPress={() => setDeclineTicketModalVisible(true)}
-                />
-              </View>
-            )}
-
             {/* Cost breakdown — visible to assigned technician or manager */}
             {(isManager || (employee.role === 'TECHNICIAN' && issue.assignedToId === employee.id)) && (
               <CostBreakdownForm
@@ -301,20 +297,6 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
                 onSaved={setIssue}
                 onApprove={handleApproveCost}
                 onReject={() => setRejectModalVisible(true)}
-              />
-            )}
-
-            {/* Actions */}
-            {canUpdateStatus && !isDone && (
-              <PrimaryButton
-                label="Update Status"
-                onPress={() =>
-                  navigate({
-                    name: 'UpdateStatus',
-                    issueId: issue.id,
-                    currentStatus: issue.status,
-                  })
-                }
               />
             )}
 
@@ -494,7 +476,7 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 20, gap: 16, paddingBottom: 48 },
+  content: { padding: 20, gap: 16, paddingBottom: 48, maxWidth: 760, width: '100%', alignSelf: 'center' },
   backBtn: { marginBottom: 4 },
   backText: { color: colors.coffee, fontWeight: '700', fontSize: 15 },
   loader: { marginTop: 40 },

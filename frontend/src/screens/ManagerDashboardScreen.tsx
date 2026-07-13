@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { getDashboard } from '../api/dashboardApi';
 import { listIssues } from '../api/issueApi';
 import DateRangeFilter, { ALL_TIME, type DateRange } from '../components/DateRangeFilter';
 import { IssueCard } from '../components/issue/IssueCard';
 import { MetricCard } from '../components/MetricCard';
-import { PrimaryButton } from '../components/PrimaryButton';
 import { useBreakpoint } from '../hooks/useBreakpoint';
 import { useNavigation } from '../navigation/NavigationContext';
 import { colors } from '../theme/colors';
@@ -39,7 +38,7 @@ export function ManagerDashboardScreen({ token, employee }: { token: string; emp
     try {
       const [dash, issues] = await Promise.all([
         getDashboard('MANAGER', token, dateRange.from, dateRange.to),
-        listIssues(token, undefined, dateRange.from, dateRange.to),
+        listIssues(token, { from: dateRange.from, to: dateRange.to }),
       ]);
       setDashboard(dash as ManagerDashboard);
       setRecent(issues.slice(0, RECENT_LIMIT));
@@ -51,6 +50,11 @@ export function ManagerDashboardScreen({ token, employee }: { token: string; emp
   }, [token, dateRange]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const openIssue = useCallback(
+    (issueId: string) => navigate({ name: 'IssueDetail', issueId }),
+    [navigate]
+  );
 
   return (
     <DashboardShell
@@ -78,11 +82,7 @@ export function ManagerDashboardScreen({ token, employee }: { token: string; emp
             <InfoCard title={`Urgent & High priority (${dashboard.urgentIssues.length})`}>
               <View style={styles.urgentList}>
                 {dashboard.urgentIssues.map(issue => (
-                  <IssueCard
-                    key={issue.id}
-                    issue={issue}
-                    onPress={() => navigate({ name: 'IssueDetail', issueId: issue.id })}
-                  />
+                  <IssueCard key={issue.id} issue={issue} onOpen={openIssue} />
                 ))}
               </View>
             </InfoCard>
@@ -94,30 +94,14 @@ export function ManagerDashboardScreen({ token, employee }: { token: string; emp
             ) : (
               <View style={styles.list}>
                 {recent.map(issue => (
-                  <IssueCard
-                    key={issue.id}
-                    issue={issue}
-                    onPress={() => navigate({ name: 'IssueDetail', issueId: issue.id })}
-                  />
+                  <IssueCard key={issue.id} issue={issue} onOpen={openIssue} />
                 ))}
               </View>
             )}
-            <PrimaryButton
-              label="View all issues"
-              variant="secondary"
-              onPress={() => navigate({ name: 'IssueList' })}
-              style={styles.viewAll}
-            />
+            <TouchableOpacity onPress={() => navigate({ name: 'IssueList' })}>
+              <Text style={styles.viewAllLink}>View all issues →</Text>
+            </TouchableOpacity>
           </InfoCard>
-
-          {/* Mobile only — desktop navigation is handled by the sidebar */}
-          {!isDesktop && (
-            <PrimaryButton
-              label="Manage Team"
-              variant="secondary"
-              onPress={() => navigate({ name: 'ManageTeam' })}
-            />
-          )}
         </>
       ) : null}
     </DashboardShell>
@@ -131,5 +115,5 @@ const styles = StyleSheet.create({
   urgentList: { gap: 8, marginTop: 4 },
   list: { gap: 8, marginTop: 4 },
   empty: { fontSize: 13, color: colors.muted, fontStyle: 'italic' },
-  viewAll: { marginTop: 12 },
+  viewAllLink: { fontSize: 13, color: colors.coffee, fontWeight: '600', paddingTop: 12 },
 });

@@ -5,6 +5,8 @@ import { apiRequest } from './http';
 export type TechnicianOption = {
   id: string;
   name: string;
+  /** IssueCategory names this technician specializes in (may be empty). */
+  specialties: string[];
 };
 
 export type AddEmployeePayload = {
@@ -13,6 +15,9 @@ export type AddEmployeePayload = {
   email: string;
   password: string;
   phone?: string;
+  notes?: string;
+  /** IssueCategory names — only meaningful for TECHNICIAN. */
+  specialties?: string[];
 };
 
 export type EmployeeTeamMember = {
@@ -20,6 +25,8 @@ export type EmployeeTeamMember = {
   name: string;
   role: 'STAFF' | 'TECHNICIAN';
   email: string;
+  notes: string | null;
+  specialties: string[];
 };
 
 export function listTechnicians(token: string): Promise<TechnicianOption[]> {

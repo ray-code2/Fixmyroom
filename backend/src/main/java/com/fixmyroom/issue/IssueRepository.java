@@ -23,12 +23,14 @@ public class IssueRepository {
         this.jdbc = jdbc;
     }
 
-    // room_sequence is deliberately a correlated subquery against the *full, unfiltered* issues
-    // table — not a window function over this query's own result set — so a ticket's per-room
-    // sequence number (and therefore its ticketId) never shifts depending on which status/date
-    // filters happen to be applied to the list it's being viewed from. IS NOT DISTINCT FROM
-    // groups the (now rare, pre-required-room) NULL-room issues into their own stable sequence
-    // instead of every one of them being counted as 0.
+    // room_sequence is deliberately computed over the *full, unfiltered* issues table — the
+    // window runs in a derived table before any WHERE filter — so a ticket's per-room sequence
+    // number (and therefore its ticketId) never shifts depending on which status/date filters
+    // happen to be applied to the list it's being viewed from. PARTITION BY groups the (now
+    // rare, pre-required-room) NULL-room issues into their own stable sequence, matching the
+    // old IS NOT DISTINCT FROM behaviour. ROW_NUMBER over (created_at, id) is equivalent to
+    // the previous correlated COUNT(created_at <, or = with id <=) but O(n log n) once for the
+    // whole result set instead of one O(n) scan per returned row.
     private static final String ISSUE_SELECT =
             "SELECT i.id, i.business_id, b.name AS business_name, i.room_id, r.room_number, i.title, i.description, " +
             "i.category, i.priority, i.status, " +
@@ -37,12 +39,10 @@ public class IssueRepository {
             "i.estimated_cost, i.actual_cost, i.photo_url, " +
             "i.material_cost, i.labor_cost, i.other_cost, i.cost_notes, i.cost_status, " +
             "i.cost_submitted_by, i.cost_approved_by, i.cost_approved_at, i.cost_rejection_reason, " +
-            "i.created_at, i.updated_at, i.resolved_at, " +
-            "(SELECT COUNT(*) FROM issues i2 " +
-            " WHERE i2.business_id = i.business_id AND i2.room_id IS NOT DISTINCT FROM i.room_id " +
-            " AND (i2.created_at < i.created_at OR (i2.created_at = i.created_at AND i2.id <= i.id))" +
-            ") AS room_sequence " +
-            "FROM issues i " +
+            "i.created_at, i.updated_at, i.resolved_at, i.room_sequence " +
+            "FROM (SELECT i0.*, ROW_NUMBER() OVER (" +
+            "PARTITION BY i0.business_id, i0.room_id ORDER BY i0.created_at, i0.id" +
+            ") AS room_sequence FROM issues i0) i " +
             "JOIN businesses b ON b.id = i.business_id " +
             "LEFT JOIN rooms r ON r.id = i.room_id " +
             "JOIN employees rep ON rep.id = i.reported_by " +
@@ -51,7 +51,8 @@ public class IssueRepository {
     // --- Queries ---
 
     public List<IssueRecord> findByProperty(UUID propertyId, @Nullable IssueStatus status,
-                                             @Nullable UUID assignedTo,
+                                             @Nullable UUID assignedTo, @Nullable UUID reportedBy,
+                                             @Nullable UUID roomId,
                                              @Nullable Instant from, @Nullable Instant to) {
         StringBuilder sql = new StringBuilder(ISSUE_SELECT).append("WHERE i.business_id = ?");
         List<Object> params = new ArrayList<>();
@@ -64,6 +65,14 @@ public class IssueRepository {
         if (assignedTo != null) {
             sql.append(" AND i.assigned_to = ?");
             params.add(assignedTo);
+        }
+        if (reportedBy != null) {
+            sql.append(" AND i.reported_by = ?");
+            params.add(reportedBy);
+        }
+        if (roomId != null) {
+            sql.append(" AND i.room_id = ?");
+            params.add(roomId);
         }
         if (from != null) {
             sql.append(" AND i.created_at >= ?");
@@ -125,6 +134,44 @@ public class IssueRepository {
                 Integer.class, propertyId
         );
         return count == null ? 0 : count;
+    }
+
+    public int countByPropertyAndReporter(UUID propertyId, UUID reporterId) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM issues WHERE business_id = ? AND reported_by = ?",
+                Integer.class, propertyId, reporterId
+        );
+        return count == null ? 0 : count;
+    }
+
+    /** All five manager-dashboard status counters in a single scan instead of five COUNT queries. */
+    public StatusCounts getStatusCounts(UUID propertyId) {
+        StatusCounts counts = jdbc.query(
+                "SELECT " +
+                "SUM(CASE WHEN status NOT IN ('COMPLETED','CANCELLED','DECLINED') THEN 1 ELSE 0 END) AS open_count, " +
+                "SUM(CASE WHEN status = 'NEW' THEN 1 ELSE 0 END) AS new_count, " +
+                "SUM(CASE WHEN status = 'IN_PROGRESS' THEN 1 ELSE 0 END) AS in_progress_count, " +
+                "SUM(CASE WHEN status = 'WAITING_PARTS' THEN 1 ELSE 0 END) AS waiting_parts_count, " +
+                "SUM(CASE WHEN status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed_count " +
+                "FROM issues WHERE business_id = ?",
+                rs -> rs.next()
+                        ? new StatusCounts(rs.getInt("open_count"), rs.getInt("new_count"),
+                                rs.getInt("in_progress_count"), rs.getInt("waiting_parts_count"),
+                                rs.getInt("completed_count"))
+                        : null,
+                propertyId
+        );
+        return counts != null ? counts : new StatusCounts(0, 0, 0, 0, 0);
+    }
+
+    /** Open URGENT/HIGH issues, newest first, limited in SQL instead of fetching the whole table. */
+    public List<IssueRecord> findOpenUrgentByProperty(UUID propertyId, int limit) {
+        return jdbc.query(
+                ISSUE_SELECT +
+                "WHERE i.business_id = ? AND i.status NOT IN ('COMPLETED','CANCELLED','DECLINED') " +
+                "AND i.priority IN ('URGENT','HIGH') ORDER BY i.created_at DESC LIMIT ?",
+                this::mapIssue, propertyId, limit
+        );
     }
 
     public int countByCostStatus(UUID propertyId, CostStatus costStatus) {
@@ -388,7 +435,9 @@ public class IssueRepository {
         return count != null && count > 0;
     }
 
-    // --- Inner record for aggregates ---
+    // --- Inner records for aggregates ---
+
+    public record StatusCounts(int open, int newIssues, int inProgress, int waitingParts, int completed) {}
 
     public record FinanceAggregates(
             BigDecimal totalEstimated,

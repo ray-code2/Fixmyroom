@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { getDashboard } from '../api/dashboardApi';
 import { IssueCard } from '../components/issue/IssueCard';
 import { MetricCard } from '../components/MetricCard';
-import { PrimaryButton } from '../components/PrimaryButton';
 import { useNavigation } from '../navigation/NavigationContext';
 import { colors } from '../theme/colors';
 import type { EmployeeProfile } from '../types/auth';
@@ -31,6 +30,11 @@ export function TechnicianDashboardScreen({ token, employee }: { token: string; 
 
   useEffect(() => { void load(); }, [load]);
 
+  const openIssue = useCallback(
+    (issueId: string) => navigate({ name: 'IssueDetail', issueId }),
+    [navigate]
+  );
+
   return (
     <DashboardShell
       employee={employee}
@@ -54,24 +58,22 @@ export function TechnicianDashboardScreen({ token, employee }: { token: string; 
             <InfoCard title="Your queue">
               <View style={styles.queueList}>
                 {dashboard.queue.map(issue => (
-                  <IssueCard
-                    key={issue.id}
-                    issue={issue}
-                    onPress={() => navigate({ name: 'IssueDetail', issueId: issue.id })}
-                  />
+                  <IssueCard key={issue.id} issue={issue} onOpen={openIssue} />
                 ))}
               </View>
+              {dashboard.assignedCount > dashboard.queue.length && (
+                <TouchableOpacity onPress={() => navigate({ name: 'IssueList' })}>
+                  <Text style={styles.viewAllLink}>
+                    View all {dashboard.assignedCount} assigned issues →
+                  </Text>
+                </TouchableOpacity>
+              )}
             </InfoCard>
           ) : (
             <View style={styles.empty}>
               <Text style={styles.emptyText}>No tasks assigned to you yet.</Text>
             </View>
           )}
-
-          <PrimaryButton
-            label="View All Assigned Issues"
-            onPress={() => navigate({ name: 'IssueList' })}
-          />
         </>
       ) : null}
     </DashboardShell>
@@ -82,6 +84,7 @@ const styles = StyleSheet.create({
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   error: { color: colors.danger, fontWeight: '600', marginBottom: 12 },
   queueList: { gap: 8, marginTop: 4 },
+  viewAllLink: { fontSize: 13, color: colors.coffee, fontWeight: '600', paddingTop: 12 },
   empty: { alignItems: 'center', paddingVertical: 24 },
   emptyText: { fontSize: 14, color: colors.muted, fontStyle: 'italic' },
 });

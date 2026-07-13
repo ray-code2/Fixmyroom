@@ -93,7 +93,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 20, paddingBottom: 48, gap: 20 },
+  content: { padding: 20, paddingBottom: 48, gap: 20, maxWidth: 760, width: '100%', alignSelf: 'center' },
   backBtn: { marginBottom: 4 },
   backText: { color: colors.coffee, fontWeight: '700', fontSize: 15 },
 

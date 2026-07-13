@@ -83,7 +83,7 @@ public class AuthService {
         employeeRepository.createEmployee(
                 managerId, businessId, null, request.managerName().trim(),
                 EmployeeRole.MANAGER, "en", null, email,
-                passwordEncoder.encode(request.password()), now
+                passwordEncoder.encode(request.password()), null, null, now
         );
 
         EmployeeRecord manager = employeeRepository.findActiveById(managerId)
@@ -105,13 +105,38 @@ public class AuthService {
         UUID employeeId = UUID.randomUUID();
         Instant now = Instant.now();
         String phone = (request.phone() != null && !request.phone().isBlank()) ? request.phone().trim() : null;
+        String notes = (request.notes() != null && !request.notes().isBlank()) ? request.notes().trim() : null;
 
         employeeRepository.createEmployee(
                 employeeId, businessId, managerId, request.name().trim(),
                 request.role(), "en", phone, email,
-                passwordEncoder.encode(request.password()), now
+                passwordEncoder.encode(request.password()),
+                notes, normalizeSpecialties(request.specialties(), request.role()), now
         );
         log.info("Employee added businessId={} employeeId={} role={}", businessId, employeeId, request.role());
+    }
+
+    /**
+     * Technicians only: map free-form tokens ("Plumbing", "HVAC / Air-con", "LOCK KEY")
+     * onto IssueCategory names and store them as CSV. Unknown tokens are dropped rather
+     * than rejected so a half-filled Excel column doesn't fail the whole row.
+     */
+    private static String normalizeSpecialties(List<String> raw, EmployeeRole role) {
+        if (raw == null || raw.isEmpty() || role != EmployeeRole.TECHNICIAN) return null;
+        var valid = new java.util.LinkedHashSet<String>();
+        for (String token : raw) {
+            if (token == null || token.isBlank()) continue;
+            String candidate = token.trim().toUpperCase()
+                    .replaceAll("[^A-Z]+", "_")
+                    .replaceAll("^_+|_+$", "");
+            if (candidate.startsWith("HVAC") || candidate.startsWith("AIR")) candidate = "HVAC";
+            try {
+                valid.add(com.fixmyroom.issue.IssueCategory.valueOf(candidate).name());
+            } catch (IllegalArgumentException ignored) {
+                // unknown category token — skip
+            }
+        }
+        return valid.isEmpty() ? null : String.join(",", valid);
     }
 
     public void resetEmployeePassword(UUID employeeId, UUID businessId, String newPassword) {

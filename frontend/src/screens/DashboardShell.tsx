@@ -129,6 +129,9 @@ const layout = StyleSheet.create({
     padding: 32,
     paddingBottom: 48,
     gap: 20,
+    maxWidth: 1080,
+    width: '100%',
+    alignSelf: 'center',
   },
 });
 

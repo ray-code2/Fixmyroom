@@ -86,7 +86,7 @@ public class EmployeeController {
     @GetMapping("/template")
     @PreAuthorize("hasRole('MANAGER')")
     ResponseEntity<Resource> downloadTemplate() throws IOException {
-        String[] headers = {"Name", "Email", "Role", "Phone", "Password"};
+        String[] headers = {"Name", "Email", "Role", "Phone", "Password", "Notes", "Specialties"};
 
         byte[] bytes;
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
@@ -147,11 +147,13 @@ public class EmployeeController {
                 Row row = sheet.getRow(rowIdx);
                 if (row == null) continue;
 
-                String name     = cell(fmt, row, 0);
-                String email    = cell(fmt, row, 1);
-                String roleStr  = cell(fmt, row, 2).toUpperCase();
-                String phone    = cell(fmt, row, 3);
-                String password = cell(fmt, row, 4);
+                String name        = cell(fmt, row, 0);
+                String email       = cell(fmt, row, 1);
+                String roleStr     = cell(fmt, row, 2).toUpperCase();
+                String phone       = cell(fmt, row, 3);
+                String password    = cell(fmt, row, 4);
+                String notes       = cell(fmt, row, 5);
+                String specialties = cell(fmt, row, 6);
 
                 if (name.isBlank() && email.isBlank()) continue;
 
@@ -184,7 +186,9 @@ public class EmployeeController {
                                     name.trim(), role,
                                     email.trim().toLowerCase(),
                                     password,
-                                    phone.isBlank() ? null : phone.trim()),
+                                    phone.isBlank() ? null : phone.trim(),
+                                    notes.isBlank() ? null : notes.trim(),
+                                    specialties.isBlank() ? null : List.of(specialties.split(","))),
                             businessId, managerId);
                     added++;
                 } catch (Exception e) {

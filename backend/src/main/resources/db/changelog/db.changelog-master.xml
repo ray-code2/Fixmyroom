@@ -128,4 +128,32 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="007-issue-query-indexes" author="fmr">
+        <comment>Composite indexes for the hot issue queries: tenant lists ordered by created_at,
+            per-reporter counts (staff dashboard / mine=true), and per-status counters.
+            The single-column business_id index from 005 stays for FK enforcement.</comment>
+        <createIndex tableName="issues" indexName="idx_issues_business_created">
+            <column name="business_id"/>
+            <column name="created_at"/>
+        </createIndex>
+        <createIndex tableName="issues" indexName="idx_issues_business_reported">
+            <column name="business_id"/>
+            <column name="reported_by"/>
+        </createIndex>
+        <createIndex tableName="issues" indexName="idx_issues_business_status">
+            <column name="business_id"/>
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="008-employee-notes-specialties" author="fmr">
+        <comment>Optional free-text notes per employee, plus technician specialties stored
+            as a comma-separated list of IssueCategory names (e.g. "PLUMBING,ELECTRICAL")
+            so managers can match technicians to an issue's category when assigning.</comment>
+        <addColumn tableName="employees">
+            <column name="notes" type="VARCHAR(500)"/>
+            <column name="specialties" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+
 </databaseChangeLog>

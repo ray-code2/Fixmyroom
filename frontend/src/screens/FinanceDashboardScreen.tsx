@@ -67,8 +67,12 @@ export default function FinanceDashboardScreen() {
 
   const onRefresh = () => { setRefreshing(true); load(true); };
 
+  // Enable export only when the selected date window actually has cost data —
+  // based on the summary, not the tab filter, since the export ignores tabs.
+  const hasExportData = (summary?.issuesWithCost ?? 0) > 0;
+
   const handleExport = async () => {
-    if (!token || exporting) return;
+    if (!token || exporting || !hasExportData) return;
     setExporting(true);
     try {
       await exportFinanceExcel(token, dateRange.from, dateRange.to);
@@ -99,9 +103,9 @@ export default function FinanceDashboardScreen() {
         <View style={styles.titleRow}>
           <Text style={styles.pageTitle}>Finance</Text>
           <TouchableOpacity
-            style={[styles.exportBtn, exporting && styles.exportBtnDisabled]}
+            style={[styles.exportBtn, (exporting || !hasExportData) && styles.exportBtnDisabled]}
             onPress={handleExport}
-            disabled={exporting}
+            disabled={exporting || !hasExportData}
             activeOpacity={0.75}
           >
             <Text style={styles.exportBtnText}>{exporting ? 'Exporting…' : 'Export data'}</Text>

@@ -89,7 +89,7 @@ public class FinanceController {
         // Sheet 2 needs all issues that were ever real repair work in the same date window
         // (excludes CANCELLED and DECLINED — neither one is an actual maintenance issue).
         List<IssueRecord> allNonCancelled = issueRepo
-                .findByProperty(propertyId, null, null, fromInstant, toInstant)
+                .findByProperty(propertyId, null, null, null, null, fromInstant, toInstant)
                 .stream()
                 .filter(r -> r.status() != IssueStatus.CANCELLED && r.status() != IssueStatus.DECLINED)
                 .toList();

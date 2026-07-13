@@ -28,13 +28,12 @@ export function RoomDetailScreen({
     setLoading(true);
     setError('');
     try {
-      const [r, all] = await Promise.all([
+      const [r, roomIssues] = await Promise.all([
         getRoom(roomId, token),
-        listIssues(token),
+        listIssues(token, { roomId }),
       ]);
       setRoom(r);
-      // Filter client-side — avoids a new backend endpoint
-      setIssues(all.filter(i => i.unitNumber === r.unitNumber).slice(0, 10));
+      setIssues(roomIssues.slice(0, 10));
     } catch {
       setError('Could not load room details.');
     } finally {
@@ -43,6 +42,11 @@ export function RoomDetailScreen({
   }, [roomId, token]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const openIssue = useCallback(
+    (issueId: string) => navigate({ name: 'IssueDetail', issueId }),
+    [navigate]
+  );
 
   return (
     <Screen>
@@ -66,6 +70,10 @@ export function RoomDetailScreen({
                   <Text style={styles.roomNumber}>Room {room.unitNumber}</Text>
                   {room.floor && <Text style={styles.roomMetaText}>Floor {room.floor}</Text>}
                   {room.unitType && <Text style={styles.roomType}>{room.unitType}</Text>}
+                </View>
+                <View style={styles.roomIdBox}>
+                  <Text style={styles.roomIdLabel}>Room ID</Text>
+                  <Text style={styles.roomIdValue} selectable>{room.id}</Text>
                 </View>
               </View>
             </View>
@@ -91,11 +99,7 @@ export function RoomDetailScreen({
               ) : (
                 <View style={styles.issueList}>
                   {issues.map(issue => (
-                    <IssueCard
-                      key={issue.id}
-                      issue={issue}
-                      onPress={() => navigate({ name: 'IssueDetail', issueId: issue.id })}
-                    />
+                    <IssueCard key={issue.id} issue={issue} onOpen={openIssue} />
                   ))}
                 </View>
               )}
@@ -108,7 +112,7 @@ export function RoomDetailScreen({
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, gap: 16, paddingBottom: 60 },
+  container: { padding: 20, gap: 16, paddingBottom: 60, maxWidth: 760, width: '100%', alignSelf: 'center' },
 
   backRow: { marginBottom: 2 },
   backText: { color: colors.coffee, fontWeight: '600', fontSize: 14 },
@@ -120,6 +124,12 @@ const styles = StyleSheet.create({
     borderColor: colors.line, padding: 20,
   },
   roomCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  roomIdBox: { alignSelf: 'flex-start', alignItems: 'flex-end', maxWidth: 130, gap: 2 },
+  roomIdLabel: {
+    fontSize: 9, fontWeight: '700', color: colors.muted,
+    textTransform: 'uppercase', letterSpacing: 0.6,
+  },
+  roomIdValue: { fontSize: 9, color: colors.muted, textAlign: 'right', lineHeight: 13 },
   roomBadge: {
     width: 64, height: 64, borderRadius: 16,
     backgroundColor: colors.coffee, alignItems: 'center', justifyContent: 'center',

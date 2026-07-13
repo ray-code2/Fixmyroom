@@ -40,7 +40,7 @@ interface Props {
 }
 
 export function CreateIssueScreen({ token }: Props) {
-  const { goBack, navigate } = useNavigation();
+  const { canGoBack, goBack, navigate } = useNavigation();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -162,9 +162,12 @@ export function CreateIssueScreen({ token }: Props) {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
+        {/* Reached as a bottom-nav tab (no history) or pushed from a dashboard CTA */}
+        {canGoBack && (
+          <TouchableOpacity onPress={goBack} style={styles.backBtn}>
+            <Text style={styles.backText}>← Back</Text>
+          </TouchableOpacity>
+        )}
 
         <Text style={styles.heading}>Report an Issue</Text>
         <Text style={styles.sub}>Fill in the details. The manager will be notified immediately.</Text>
@@ -265,10 +268,7 @@ export function CreateIssueScreen({ token }: Props) {
 
         {/* Category */}
         <View style={styles.field}>
-          <View style={styles.labelRow}>
-            <Text style={styles.label}>Category</Text>
-            <Text style={styles.labelHint}>Auto-detected from photo · editable</Text>
-          </View>
+          <Text style={styles.label}>Category</Text>
           <View style={styles.grid}>
             {CATEGORIES.map(c => (
               <TouchableOpacity
@@ -364,7 +364,7 @@ export function CreateIssueScreen({ token }: Props) {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 20, gap: 20, paddingBottom: 48 },
+  content: { padding: 20, gap: 20, paddingBottom: 48, maxWidth: 760, width: '100%', alignSelf: 'center' },
   backBtn: { marginBottom: 0 },
   backText: { color: colors.coffee, fontWeight: '700', fontSize: 15 },
   heading: { fontSize: 26, fontWeight: '700', color: colors.black },

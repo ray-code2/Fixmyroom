@@ -1,20 +1,11 @@
 import { useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import {
-  ChevronLeft,
-  ChevronRight,
-  ClipboardList,
-  DoorOpen,
-  FilePlus,
-  LayoutDashboard,
-  TrendingUp,
-  Upload,
-  UserPlus,
-  Users,
-} from 'lucide-react-native';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useAuth } from '../auth/AuthContext';
 import { useBreakpoint } from '../hooks/useBreakpoint';
-import { type AppScreen, NavigationProvider, useNavigation } from '../navigation/NavigationContext';
+import { NavigationProvider, useNavigation } from '../navigation/NavigationContext';
+import { getNavItems, isNavActive } from '../navigation/navItems';
+import { BottomNav } from '../components/BottomNav';
 import { Screen } from '../components/Screen';
 import { colors } from '../theme/colors';
 import type { EmployeeProfile } from '../types/auth';
@@ -36,51 +27,11 @@ import { UploadTeamScreen } from './UploadTeamScreen';
 import { ProfileScreen } from './ProfileScreen';
 import FinanceDashboardScreen from './FinanceDashboardScreen';
 
-// ── Nav items per role ────────────────────────────────────────────────────────
-
-type IconComponent = React.ComponentType<{ size?: number; color?: string }>;
-type NavItem = { label: string; screen: AppScreen; icon: IconComponent };
-
-function getNavItems(role: string): NavItem[] {
-  switch (role) {
-    case 'MANAGER':
-      return [
-        { label: 'Dashboard',    screen: { name: 'Dashboard' },     icon: LayoutDashboard },
-        { label: 'All Issues',   screen: { name: 'IssueList' },     icon: ClipboardList },
-        { label: 'Finance',      screen: { name: 'Finance' },       icon: TrendingUp },
-        { label: 'Manage Rooms', screen: { name: 'ManageRooms' },   icon: DoorOpen },
-        { label: 'Manage Team',  screen: { name: 'ManageTeam' },    icon: Users },
-        { label: 'Add Member',   screen: { name: 'AddTeamMember' }, icon: UserPlus },
-        { label: 'Upload Team',  screen: { name: 'UploadTeam' },    icon: Upload },
-      ];
-    case 'STAFF':
-      return [
-        { label: 'Dashboard',    screen: { name: 'Dashboard' },  icon: LayoutDashboard },
-        { label: 'Report Issue', screen: { name: 'CreateIssue' }, icon: FilePlus },
-        { label: 'All Issues',   screen: { name: 'IssueList' },  icon: ClipboardList },
-      ];
-    case 'TECHNICIAN':
-      return [
-        { label: 'My Tasks',   screen: { name: 'Dashboard' }, icon: LayoutDashboard },
-        { label: 'All Issues', screen: { name: 'IssueList' }, icon: ClipboardList },
-      ];
-    default:
-      return [{ label: 'Dashboard', screen: { name: 'Dashboard' }, icon: LayoutDashboard }];
-  }
-}
-
 const ROLE_LABELS: Record<string, string> = {
   MANAGER: 'Hotel Manager',
   STAFF: 'Staff',
   TECHNICIAN: 'Technician',
 };
-
-function isNavActive(current: AppScreen, itemScreen: AppScreen): boolean {
-  if (current.name === itemScreen.name) return true;
-  const issueChildren = ['IssueDetail', 'UpdateStatus', 'AssignTechnician'];
-  if (issueChildren.includes(current.name) && itemScreen.name === 'IssueList') return true;
-  return false;
-}
 
 // ── Desktop sidebar ───────────────────────────────────────────────────────────
 
@@ -89,7 +40,7 @@ const NAV_ACTIVE_COLOR = colors.white;
 const NAV_IDLE_COLOR = '#B8A89A';
 
 function AppSidebar({ employee, onCollapse }: { employee: EmployeeProfile; onCollapse: () => void }) {
-  const { current, navigate } = useNavigation();
+  const { current, navigate, resetTo } = useNavigation();
   const navItems = getNavItems(employee.role);
   const initials = employee.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
 
@@ -122,7 +73,7 @@ function AppSidebar({ employee, onCollapse }: { employee: EmployeeProfile; onCol
               <Pressable
                 key={item.label}
                 style={[sb.navItem, active && sb.navItemActive]}
-                onPress={() => { if (!active) navigate(item.screen); }}
+                onPress={() => { if (!active) resetTo(item.screen); }}
               >
                 <Icon size={16} color={active ? NAV_ACTIVE_COLOR : NAV_IDLE_COLOR} />
                 <Text style={[sb.navLabel, active && sb.navLabelActive]}>{item.label}</Text>
@@ -165,7 +116,7 @@ function AppSidebar({ employee, onCollapse }: { employee: EmployeeProfile; onCol
 // ── Inner router (inside NavigationProvider) ─────────────────────────────────
 
 function AppRouter({ token, employee }: { token: string; employee: EmployeeProfile }) {
-  const { current } = useNavigation();
+  const { current, resetTo } = useNavigation();
   const { isDesktop } = useBreakpoint();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -217,7 +168,14 @@ function AppRouter({ token, employee }: { token: string; employee: EmployeeProfi
     }
   })();
 
-  if (!isDesktop) return screen;
+  if (!isDesktop) {
+    return (
+      <View style={rt.mobileWrapper}>
+        <View style={rt.mobileContent}>{screen}</View>
+        <BottomNav items={getNavItems(employee.role)} current={current} onSelect={resetTo} />
+      </View>
+    );
+  }
 
   return (
     <View style={rt.desktopWrapper}>
@@ -376,6 +334,8 @@ const sb = StyleSheet.create({
 });
 
 const rt = StyleSheet.create({
+  mobileWrapper: { flex: 1 },
+  mobileContent: { flex: 1 },
   desktopWrapper: {
     flex: 1,
     flexDirection: 'row',

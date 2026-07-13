@@ -12,8 +12,13 @@ import {
 import { addEmployee } from '../api/employeeApi';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { Screen } from '../components/Screen';
+import { useNavigation } from '../navigation/NavigationContext';
 import { colors } from '../theme/colors';
 import type { EmployeeProfile } from '../types/auth';
+import type { IssueCategory } from '../types/issue';
+import { CATEGORY_LABELS } from '../types/issue';
+
+const SPECIALTY_OPTIONS = Object.entries(CATEGORY_LABELS) as [IssueCategory, string][];
 
 type Role = 'STAFF' | 'TECHNICIAN';
 
@@ -28,15 +33,24 @@ interface Props {
 }
 
 export function AddTeamMemberScreen({ token }: Props) {
+  const { canGoBack, goBack } = useNavigation();
 
   const [name, setName]       = useState('');
   const [email, setEmail]     = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone]     = useState('');
+  const [notes, setNotes]     = useState('');
   const [role, setRole]       = useState<Role>('STAFF');
+  const [specialties, setSpecialties] = useState<IssueCategory[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError]     = useState('');
   const [success, setSuccess] = useState('');
+
+  function toggleSpecialty(cat: IssueCategory) {
+    setSpecialties(prev =>
+      prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
+    );
+  }
 
   async function handleSubmit() {
     setError('');
@@ -55,11 +69,14 @@ export function AddTeamMemberScreen({ token }: Props) {
           email: email.trim().toLowerCase(),
           password,
           ...(phone.trim() ? { phone: phone.trim() } : {}),
+          ...(notes.trim() ? { notes: notes.trim() } : {}),
+          ...(role === 'TECHNICIAN' && specialties.length > 0 ? { specialties } : {}),
         },
         token
       );
       setSuccess(`${name.trim()} has been added as ${role.toLowerCase()}.`);
-      setName(''); setEmail(''); setPassword(''); setPhone('');
+      setName(''); setEmail(''); setPassword(''); setPhone(''); setNotes('');
+      setSpecialties([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add team member.');
     } finally {
@@ -74,6 +91,11 @@ export function AddTeamMemberScreen({ token }: Props) {
         style={styles.kav}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {canGoBack && (
+            <TouchableOpacity onPress={goBack} style={styles.backBtn}>
+              <Text style={styles.backText}>← Back</Text>
+            </TouchableOpacity>
+          )}
           <Text style={styles.heading}>Add Team Member</Text>
           <Text style={styles.sub}>
             They'll log in with the email and password you set here.
@@ -108,7 +130,48 @@ export function AddTeamMemberScreen({ token }: Props) {
               placeholder="Set initial password (8+ chars)" secureTextEntry />
             <Field label="Phone (optional)" value={phone} onChangeText={setPhone}
               placeholder="+66 000 000 000" keyboardType="phone-pad" />
+            <View style={styles.fieldWrap}>
+              <Text style={styles.fieldLabel}>Notes (optional)</Text>
+              <TextInput
+                style={[styles.input, styles.notesInput]}
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="e.g. Night shift, speaks English & Thai…"
+                placeholderTextColor={colors.muted}
+                multiline
+                numberOfLines={3}
+                maxLength={500}
+                textAlignVertical="top"
+              />
+            </View>
           </View>
+
+          {/* Specialties — technicians only; used to recommend the right person when assigning */}
+          {role === 'TECHNICIAN' && (
+            <View style={styles.fieldWrap}>
+              <Text style={styles.fieldLabel}>Specialties (optional)</Text>
+              <Text style={styles.fieldHint}>
+                Pick what this technician handles best — issues in these categories will
+                recommend them first when assigning.
+              </Text>
+              <View style={styles.specialtyGrid}>
+                {SPECIALTY_OPTIONS.map(([cat, label]) => {
+                  const active = specialties.includes(cat);
+                  return (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[styles.specialtyChip, active && styles.specialtyChipActive]}
+                      onPress={() => toggleSpecialty(cat)}
+                    >
+                      <Text style={[styles.specialtyChipText, active && styles.specialtyChipTextActive]}>
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
           {success ? (
@@ -158,7 +221,9 @@ function Field({
 
 const styles = StyleSheet.create({
   kav: { flex: 1 },
-  content: { padding: 20, gap: 16, paddingBottom: 48 },
+  content: { padding: 20, gap: 16, paddingBottom: 48, maxWidth: 760, width: '100%', alignSelf: 'center' },
+  backBtn: { marginBottom: 4 },
+  backText: { color: colors.coffee, fontWeight: '700', fontSize: 15 },
   heading: { fontSize: 26, fontWeight: '700', color: colors.black, lineHeight: 32 },
   sub: { fontSize: 14, color: colors.muted, marginTop: -8 },
 
@@ -183,6 +248,16 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#D6CFC8', borderRadius: 14,
     padding: 13, fontSize: 14, color: colors.black,
   },
+  notesInput: { minHeight: 72 },
+  fieldHint: { fontSize: 12, color: colors.muted, lineHeight: 17 },
+  specialtyGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 },
+  specialtyChip: {
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10,
+    backgroundColor: '#F5F0EB', borderWidth: 1.5, borderColor: 'transparent',
+  },
+  specialtyChipActive: { backgroundColor: '#F6EFE8', borderColor: colors.coffee },
+  specialtyChipText: { fontSize: 13, fontWeight: '600', color: colors.muted },
+  specialtyChipTextActive: { color: colors.coffee },
 
   error: { color: colors.danger, fontWeight: '600', fontSize: 13 },
   successBox: {

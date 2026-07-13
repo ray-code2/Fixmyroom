@@ -316,7 +316,7 @@ public class DemoDataInitializer implements ApplicationRunner {
             return;
         }
         employeeRepo.createEmployee(id, hotelId, managerId, name, role, "en",
-                phone, email, passwordEncoder.encode(demoPassword), createdAt);
+                phone, email, passwordEncoder.encode(demoPassword), null, null, createdAt);
         log.info("Seeded employee {} role={} email={}", id, role, email);
     }
 

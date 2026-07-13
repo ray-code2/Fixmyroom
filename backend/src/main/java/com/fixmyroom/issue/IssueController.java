@@ -52,10 +52,12 @@ public class IssueController {
     @GetMapping
     public List<IssueSummaryResponse> list(
             @RequestParam(required = false) IssueStatus status,
+            @RequestParam(required = false, defaultValue = "false") boolean mine,
+            @RequestParam(required = false) UUID roomId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @AuthenticationPrincipal Jwt jwt) {
-        return issueService.list(propertyId(jwt), role(jwt), employeeId(jwt), status, from, to);
+        return issueService.list(propertyId(jwt), role(jwt), employeeId(jwt), status, mine, roomId, from, to);
     }
 
     @GetMapping("/{id}")

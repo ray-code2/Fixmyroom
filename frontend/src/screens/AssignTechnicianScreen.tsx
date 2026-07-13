@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -8,12 +8,14 @@ import {
   View,
 } from 'react-native';
 import { listTechnicians, type TechnicianOption } from '../api/employeeApi';
-import { assignIssue } from '../api/issueApi';
+import { assignIssue, getIssue } from '../api/issueApi';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { Screen } from '../components/Screen';
 import { useNavigation } from '../navigation/NavigationContext';
 import { colors } from '../theme/colors';
 import type { EmployeeProfile } from '../types/auth';
+import type { IssueCategory } from '../types/issue';
+import { CATEGORY_LABELS } from '../types/issue';
 
 interface Props {
   issueId: string;
@@ -24,17 +26,34 @@ interface Props {
 export function AssignTechnicianScreen({ issueId, token }: Props) {
   const { goBack, replace } = useNavigation();
   const [technicians, setTechnicians] = useState<TechnicianOption[]>([]);
+  const [issueCategory, setIssueCategory] = useState<IssueCategory | null>(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    listTechnicians(token)
-      .then(setTechnicians)
+    Promise.all([listTechnicians(token), getIssue(issueId, token)])
+      .then(([techs, issue]) => {
+        setTechnicians(techs);
+        setIssueCategory(issue.category);
+      })
       .catch(() => setError('Could not load technicians.'))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, [token, issueId]);
+
+  // Specialists in the issue's category first, so the right person is one tap away.
+  const { recommended, others } = useMemo(() => {
+    if (!issueCategory) return { recommended: [] as TechnicianOption[], others: technicians };
+    const rec: TechnicianOption[] = [];
+    const rest: TechnicianOption[] = [];
+    for (const t of technicians) {
+      (t.specialties.includes(issueCategory) ? rec : rest).push(t);
+    }
+    return { recommended: rec, others: rest };
+  }, [technicians, issueCategory]);
+
+  const categoryLabel = issueCategory ? CATEGORY_LABELS[issueCategory] : null;
 
   async function handleAssign() {
     if (!selected) return;
@@ -50,6 +69,44 @@ export function AssignTechnicianScreen({ issueId, token }: Props) {
     }
   }
 
+  function renderTechnician(tech: TechnicianOption, isRecommended: boolean) {
+    const isSelected = selected === tech.id;
+    const initials = tech.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+    const specialtyLabels = tech.specialties
+      .map(s => CATEGORY_LABELS[s as IssueCategory] ?? s)
+      .join(' · ');
+    return (
+      <TouchableOpacity
+        key={tech.id}
+        style={[styles.option, isSelected && styles.optionSelected]}
+        onPress={() => setSelected(tech.id)}
+        activeOpacity={0.75}
+      >
+        <View style={[styles.optionAvatar, isSelected && styles.optionAvatarSelected]}>
+          <Text style={[styles.optionAvatarText, isSelected && styles.optionAvatarTextSelected]}>
+            {initials}
+          </Text>
+        </View>
+        <View style={styles.optionInfo}>
+          <View style={styles.optionNameRow}>
+            <Text style={[styles.optionName, isSelected && styles.optionNameSelected]}>
+              {tech.name}
+            </Text>
+            {isRecommended && (
+              <View style={styles.matchBadge}>
+                <Text style={styles.matchBadgeText}>Match</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.optionSpecialties} numberOfLines={1}>
+            {specialtyLabels || 'No specialty set'}
+          </Text>
+        </View>
+        {isSelected && <Text style={styles.check}>✓</Text>}
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
@@ -58,7 +115,11 @@ export function AssignTechnicianScreen({ issueId, token }: Props) {
         </TouchableOpacity>
 
         <Text style={styles.heading}>Assign Technician</Text>
-        <Text style={styles.sub}>Select a technician to handle this issue.</Text>
+        <Text style={styles.sub}>
+          {categoryLabel
+            ? `This is a ${categoryLabel} issue — matching specialists are listed first.`
+            : 'Select a technician to handle this issue.'}
+        </Text>
 
         {loading && <ActivityIndicator color={colors.coffee} style={styles.loader} />}
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -69,30 +130,27 @@ export function AssignTechnicianScreen({ issueId, token }: Props) {
           </View>
         )}
 
-        <View style={styles.list}>
-          {technicians.map(tech => {
-            const isSelected = selected === tech.id;
-            const initials = tech.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-            return (
-              <TouchableOpacity
-                key={tech.id}
-                style={[styles.option, isSelected && styles.optionSelected]}
-                onPress={() => setSelected(tech.id)}
-                activeOpacity={0.75}
-              >
-                <View style={[styles.optionAvatar, isSelected && styles.optionAvatarSelected]}>
-                  <Text style={[styles.optionAvatarText, isSelected && styles.optionAvatarTextSelected]}>
-                    {initials}
-                  </Text>
-                </View>
-                <Text style={[styles.optionName, isSelected && styles.optionNameSelected]}>
-                  {tech.name}
-                </Text>
-                {isSelected && <Text style={styles.check}>✓</Text>}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        {recommended.length > 0 && (
+          <View style={styles.group}>
+            <Text style={styles.groupLabel}>
+              Recommended · {categoryLabel}
+            </Text>
+            <View style={styles.list}>
+              {recommended.map(t => renderTechnician(t, true))}
+            </View>
+          </View>
+        )}
+
+        {others.length > 0 && (
+          <View style={styles.group}>
+            {recommended.length > 0 && (
+              <Text style={styles.groupLabel}>Other technicians</Text>
+            )}
+            <View style={styles.list}>
+              {others.map(t => renderTechnician(t, false))}
+            </View>
+          </View>
+        )}
 
         {technicians.length > 0 && (
           <PrimaryButton
@@ -109,7 +167,7 @@ export function AssignTechnicianScreen({ issueId, token }: Props) {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 20, gap: 16, paddingBottom: 48 },
+  content: { padding: 20, gap: 16, paddingBottom: 48, maxWidth: 760, width: '100%', alignSelf: 'center' },
   backBtn: { marginBottom: 4 },
   backText: { color: colors.coffee, fontWeight: '700', fontSize: 15 },
   heading: { fontSize: 26, fontWeight: '700', color: colors.black, lineHeight: 32 },
@@ -118,6 +176,14 @@ const styles = StyleSheet.create({
   error: { color: colors.danger, fontWeight: '600', fontSize: 13 },
   empty: { paddingVertical: 32, alignItems: 'center' },
   emptyText: { fontSize: 14, color: colors.muted },
+  group: { gap: 8 },
+  groupLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
   list: { gap: 10 },
   option: {
     flexDirection: 'row',
@@ -144,8 +210,18 @@ const styles = StyleSheet.create({
   optionAvatarSelected: { backgroundColor: colors.coffee },
   optionAvatarText: { fontSize: 14, fontWeight: '700', color: colors.muted },
   optionAvatarTextSelected: { color: colors.white },
-  optionName: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.black },
+  optionInfo: { flex: 1, gap: 2 },
+  optionNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  optionName: { fontSize: 15, fontWeight: '600', color: colors.black },
   optionNameSelected: { color: colors.coffee },
+  optionSpecialties: { fontSize: 12, color: colors.muted },
+  matchBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: colors.successBg,
+  },
+  matchBadgeText: { fontSize: 10, fontWeight: '700', color: colors.success, letterSpacing: 0.3 },
   check: { fontSize: 18, color: colors.coffee, fontWeight: '700' },
   cta: { marginTop: 4 },
 });

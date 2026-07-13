@@ -18,7 +18,7 @@ type UploadState =
   | { status: 'error'; message: string };
 
 export function UploadTeamScreen({ token, employee: _ }: { token: string; employee: EmployeeProfile }) {
-  const { goBack } = useNavigation();
+  const { canGoBack, goBack } = useNavigation();
   const [state, setState] = useState<UploadState>({ status: 'idle' });
   const [downloading, setDownloading] = useState(false);
 
@@ -68,6 +68,11 @@ export function UploadTeamScreen({ token, employee: _ }: { token: string; employ
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        {canGoBack && (
+          <TouchableOpacity onPress={goBack} style={styles.backBtn}>
+            <Text style={styles.backText}>← Back</Text>
+          </TouchableOpacity>
+        )}
         <View style={styles.titleRow}>
           <Text style={styles.title}>Upload Team via Excel</Text>
           <TouchableOpacity
@@ -92,6 +97,8 @@ export function UploadTeamScreen({ token, employee: _ }: { token: string; employ
             ['C', 'Role', 'STAFF or TECHNICIAN (all caps)'],
             ['D', 'Phone', 'Optional'],
             ['E', 'Password', 'Min 8 characters, required'],
+            ['F', 'Notes', 'Optional — e.g. shift, languages'],
+            ['G', 'Specialties', 'Technicians only, comma-separated — e.g. PLUMBING, ELECTRICAL'],
           ].map(([col, field, note]) => (
             <View key={col} style={styles.colRow}>
               <View style={styles.colBadge}>
@@ -192,7 +199,9 @@ function ResultBadge({ count, label, color, bg }: { count: number; label: string
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, gap: 16, paddingBottom: 48 },
+  container: { padding: 20, gap: 16, paddingBottom: 48, maxWidth: 760, width: '100%', alignSelf: 'center' },
+  backBtn: { alignSelf: 'flex-start' },
+  backText: { color: colors.coffee, fontWeight: '700', fontSize: 15 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   title: { flex: 1, fontSize: 22, fontWeight: '700', color: colors.black },
   subtitle: { fontSize: 14, color: colors.muted, lineHeight: 20 },

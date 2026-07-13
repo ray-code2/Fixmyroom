@@ -1,13 +1,16 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Upload, UserPlus } from 'lucide-react-native';
 import { listAllEmployees, resetEmployeePassword, type EmployeeTeamMember } from '../api/employeeApi';
 import { listIssues } from '../api/issueApi';
 import DateRangeFilter, { ALL_TIME, type DateRange } from '../components/DateRangeFilter';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { Screen } from '../components/Screen';
+import { useNavigation } from '../navigation/NavigationContext';
 import { colors } from '../theme/colors';
 import type { EmployeeProfile } from '../types/auth';
-import type { IssueSummary } from '../types/issue';
+import type { IssueCategory, IssueSummary } from '../types/issue';
+import { CATEGORY_LABELS } from '../types/issue';
 
 type ResetOutcome = { status: 'saving' } | { status: 'done' } | { status: 'error'; message: string };
 
@@ -18,6 +21,7 @@ const ROLE_COLORS: Record<string, { bg: string; text: string }> = {
 };
 
 export function ManageTeamScreen({ token, employee: _ }: { token: string; employee: EmployeeProfile }) {
+  const { navigate } = useNavigation();
   const [employees, setEmployees] = useState<EmployeeTeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -31,13 +35,19 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
   const [newPassword, setNewPassword] = useState('');
   const [outcome, setOutcome] = useState<ResetOutcome | null>(null);
 
+  const hasActivity = dateRange.from != null || dateRange.to != null;
+
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
+      // Per-member activity counts only render when a date range is active,
+      // so skip the issues fetch entirely otherwise.
       const [emps, iss] = await Promise.all([
         listAllEmployees(token),
-        listIssues(token, undefined, dateRange.from, dateRange.to),
+        hasActivity
+          ? listIssues(token, { from: dateRange.from, to: dateRange.to })
+          : Promise.resolve<IssueSummary[]>([]),
       ]);
       setEmployees(emps);
       setIssues(iss);
@@ -46,9 +56,30 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
     } finally {
       setLoading(false);
     }
-  }, [token, dateRange]);
+  }, [token, dateRange, hasActivity]);
 
   useEffect(() => { void load(); }, [load]);
+
+  const visibleEmployees = useMemo(
+    () => employees.filter(e =>
+      (filter === 'ALL' || e.role === filter) &&
+      e.name.toLowerCase().includes(searchQuery.toLowerCase())
+    ),
+    [employees, filter, searchQuery]
+  );
+
+  // One pass over issues instead of two filters per rendered employee.
+  const activityByName = useMemo(() => {
+    const reported = new Map<string, number>();
+    const assigned = new Map<string, number>();
+    for (const issue of issues) {
+      reported.set(issue.reportedByName, (reported.get(issue.reportedByName) ?? 0) + 1);
+      if (issue.assignedToName) {
+        assigned.set(issue.assignedToName, (assigned.get(issue.assignedToName) ?? 0) + 1);
+      }
+    }
+    return { reported, assigned };
+  }, [issues]);
 
   function openReset(id: string) {
     setActiveId(id);
@@ -85,6 +116,26 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
           View your staff and technicians. Tap Reset Password to set a new login for any team member.
         </Text>
 
+        {/* Team actions live here (not the sidebar) so add/upload sit next to the list they change */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => navigate({ name: 'AddTeamMember' })}
+            activeOpacity={0.75}
+          >
+            <UserPlus size={15} color={colors.coffee} />
+            <Text style={styles.actionBtnText}>Add Member</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => navigate({ name: 'UploadTeam' })}
+            activeOpacity={0.75}
+          >
+            <Upload size={15} color={colors.coffee} />
+            <Text style={styles.actionBtnText}>Bulk Upload</Text>
+          </TouchableOpacity>
+        </View>
+
         <TextInput
           style={styles.searchInput}
           placeholder="Search by name..."
@@ -115,19 +166,18 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
         {loading && <ActivityIndicator color={colors.coffee} style={styles.loader} />}
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        {!loading && employees.filter((e) => (filter === 'ALL' || e.role === filter) && e.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && !error && (
+        {!loading && visibleEmployees.length === 0 && !error && (
           <View style={styles.emptyBox}>
             <Text style={styles.emptyText}>No team members yet.</Text>
-            <Text style={styles.emptyHint}>Add staff or technicians from the dashboard.</Text>
+            <Text style={styles.emptyHint}>Tap "Add Member" above to create staff or technician logins.</Text>
           </View>
         )}
 
-        {employees.filter((emp) => (filter === 'ALL' || emp.role === filter) && emp.name.toLowerCase().includes(searchQuery.toLowerCase())).map((emp) => {
+        {visibleEmployees.map((emp) => {
           const isActive = activeId === emp.id;
           const roleStyle = ROLE_COLORS[emp.role] ?? { bg: colors.ivory, text: colors.muted };
-          const reported  = issues.filter(i => i.reportedByName === emp.name).length;
-          const assigned  = issues.filter(i => i.assignedToName === emp.name).length;
-          const hasActivity = dateRange.from != null || dateRange.to != null;
+          const reported  = activityByName.reported.get(emp.name) ?? 0;
+          const assigned  = activityByName.assigned.get(emp.name) ?? 0;
 
           return (
             <View key={emp.id} style={styles.card}>
@@ -135,6 +185,20 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
                 <View style={styles.cardInfo}>
                   <Text style={styles.empName}>{emp.name}</Text>
                   <Text style={styles.empEmail}>{emp.email}</Text>
+                  {emp.notes ? (
+                    <Text style={styles.empNotes} numberOfLines={2}>{emp.notes}</Text>
+                  ) : null}
+                  {emp.specialties.length > 0 && (
+                    <View style={styles.specialtyRow}>
+                      {emp.specialties.map(s => (
+                        <View key={s} style={styles.specialtyTag}>
+                          <Text style={styles.specialtyTagText}>
+                            {CATEGORY_LABELS[s as IssueCategory] ?? s}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
                   {hasActivity && (
                     <Text style={styles.activityText}>
                       {emp.role === 'STAFF'
@@ -209,7 +273,7 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, gap: 14, paddingBottom: 48 },
+  container: { padding: 20, gap: 14, paddingBottom: 48, maxWidth: 760, width: '100%', alignSelf: 'center' },
   searchInput: {
     height: 44,
     borderWidth: 1,
@@ -222,6 +286,19 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 22, fontWeight: '700', color: colors.black },
   subtitle: { fontSize: 14, color: colors.muted, lineHeight: 20 },
+  actionRow: { flexDirection: 'row', gap: 8 },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.white,
+  },
+  actionBtnText: { fontSize: 13, fontWeight: '700', color: colors.coffee },
   filterRow: { flexDirection: 'row', gap: 8 },
   filterTab: {
     paddingHorizontal: 14,
@@ -267,6 +344,15 @@ const styles = StyleSheet.create({
   cardInfo: { flex: 1, gap: 2 },
   empName: { fontSize: 15, fontWeight: '700', color: colors.black },
   empEmail: { fontSize: 13, color: colors.muted },
+  empNotes: { fontSize: 12, color: colors.muted, fontStyle: 'italic', marginTop: 2 },
+  specialtyRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 },
+  specialtyTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: '#F5F0EB',
+  },
+  specialtyTagText: { fontSize: 11, fontWeight: '600', color: colors.coffee },
   activityText: { fontSize: 12, color: colors.coffee, fontWeight: '600', marginTop: 2 },
   roleChip: {
     borderRadius: 999,

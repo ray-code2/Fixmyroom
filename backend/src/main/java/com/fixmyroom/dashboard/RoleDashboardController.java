@@ -48,8 +48,7 @@ public class RoleDashboardController {
         List<RoomResponse> rooms = roomRepo.findActiveByProperty(propertyId)
                 .stream().map(RoomResponse::from).limit(5).toList();
 
-        int myReports = issueRepo.findByProperty(propertyId, null, null, null, null).stream()
-                .filter(i -> i.reportedById().equals(employeeId(jwt))).toList().size();
+        int myReports = issueRepo.countByPropertyAndReporter(propertyId, employeeId(jwt));
 
         List<ManagerContact> managers = employeeRepo.findActiveManagersByBusiness(propertyId);
 
@@ -77,7 +76,7 @@ public class RoleDashboardController {
         // When date range is active, derive all metrics from the same filtered set
         // so every card describes the same population.
         if (fromInstant != null || toInstant != null) {
-            List<IssueRecord> rawAll = issueRepo.findByProperty(propertyId, null, null, fromInstant, toInstant);
+            List<IssueRecord> rawAll = issueRepo.findByProperty(propertyId, null, null, null, null, fromInstant, toInstant);
             List<IssueSummaryResponse> all = rawAll.stream().map(IssueSummaryResponse::from).toList();
 
             int openIssues   = (int) all.stream().filter(i -> i.status() != IssueStatus.COMPLETED && i.status() != IssueStatus.CANCELLED && i.status() != IssueStatus.DECLINED).count();
@@ -108,11 +107,7 @@ public class RoleDashboardController {
                     avgResolutionHours, costThisMonth, urgent);
         }
 
-        int openIssues      = issueRepo.countOpenByProperty(propertyId);
-        int newIssues       = issueRepo.countByPropertyAndStatus(propertyId, IssueStatus.NEW);
-        int inProgress      = issueRepo.countByPropertyAndStatus(propertyId, IssueStatus.IN_PROGRESS);
-        int waitingParts    = issueRepo.countByPropertyAndStatus(propertyId, IssueStatus.WAITING_PARTS);
-        int completedTotal  = issueRepo.countByPropertyAndStatus(propertyId, IssueStatus.COMPLETED);
+        IssueRepository.StatusCounts counts = issueRepo.getStatusCounts(propertyId);
 
         Double avgResolutionHours = issueRepo.getAvgResolutionHours(propertyId, null, null);
 
@@ -122,18 +117,15 @@ public class RoleDashboardController {
         Instant monthTo   = monthStart.plusMonths(1).atStartOfDay(ZoneOffset.UTC).toInstant();
         BigDecimal costThisMonth = issueRepo.getApprovedCostTotal(propertyId, monthFrom, monthTo);
 
-        List<IssueSummaryResponse> urgent = issueRepo.findByProperty(propertyId, null, null, null, null)
+        List<IssueSummaryResponse> urgent = issueRepo.findOpenUrgentByProperty(propertyId, 5)
                 .stream()
-                .filter(i -> i.status() != IssueStatus.COMPLETED && i.status() != IssueStatus.CANCELLED && i.status() != IssueStatus.DECLINED)
-                .filter(i -> i.priority().name().equals("URGENT") || i.priority().name().equals("HIGH"))
-                .limit(5)
                 .map(IssueSummaryResponse::from)
                 .toList();
 
         return new ManagerDashboardResponse(
                 claim(jwt, "name"),
                 JwtTenant.businessName(jwt),
-                openIssues, newIssues, inProgress, waitingParts, completedTotal,
+                counts.open(), counts.newIssues(), counts.inProgress(), counts.waitingParts(), counts.completed(),
                 avgResolutionHours, costThisMonth, urgent
         );
     }
@@ -144,7 +136,7 @@ public class RoleDashboardController {
         UUID propertyId  = propertyId(jwt);
         UUID techId      = employeeId(jwt);
 
-        List<IssueSummaryResponse> assigned = issueRepo.findByProperty(propertyId, null, techId, null, null)
+        List<IssueSummaryResponse> assigned = issueRepo.findByProperty(propertyId, null, techId, null, null, null, null)
                 .stream().map(IssueSummaryResponse::from).toList();
 
         int inProgress   = (int) assigned.stream()

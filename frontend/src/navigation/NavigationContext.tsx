@@ -26,7 +26,8 @@ type NavAction =
   | { type: 'PUSH'; screen: AppScreen }
   | { type: 'POP' }
   | { type: 'REPLACE_TOP'; screen: AppScreen }
-  | { type: 'RESET' };
+  | { type: 'RESET' }
+  | { type: 'RESET_TO'; screen: AppScreen };
 
 function reducer(state: NavState, action: NavAction): NavState {
   switch (action.type) {
@@ -42,6 +43,10 @@ function reducer(state: NavState, action: NavAction): NavState {
         : { stack: [action.screen] };
     case 'RESET':
       return { stack: [{ name: 'Dashboard' }] };
+    case 'RESET_TO':
+      // Tab-style jump: the target becomes the only entry so the stack never
+      // grows unboundedly from sidebar / bottom-nav switching.
+      return { stack: [action.screen] };
   }
 }
 
@@ -54,6 +59,7 @@ type NavContextValue = {
   goBack: () => void;
   replace: (screen: AppScreen) => void;
   reset: () => void;
+  resetTo: (screen: AppScreen) => void;
 };
 
 const NavContext = createContext<NavContextValue | undefined>(undefined);
@@ -77,6 +83,10 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'RESET' });
   }, []);
 
+  const resetTo = useCallback((screen: AppScreen) => {
+    dispatch({ type: 'RESET_TO', screen });
+  }, []);
+
   const value = useMemo<NavContextValue>(() => ({
     current: state.stack[state.stack.length - 1] ?? { name: 'Dashboard' },
     canGoBack: state.stack.length > 1,
@@ -84,7 +94,8 @@ export function NavigationProvider({ children }: { children: ReactNode }) {
     goBack,
     replace,
     reset,
-  }), [state.stack, navigate, goBack, replace, reset]);
+    resetTo,
+  }), [state.stack, navigate, goBack, replace, reset, resetTo]);
 
   return <NavContext.Provider value={value}>{children}</NavContext.Provider>;
 }

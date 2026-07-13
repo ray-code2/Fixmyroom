@@ -28,10 +28,9 @@ const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 24,
+    borderRadius: 16,
     backgroundColor: colors.ivory,
     padding: 18,
-    marginTop: 14,
   },
   title: {
     color: colors.black,

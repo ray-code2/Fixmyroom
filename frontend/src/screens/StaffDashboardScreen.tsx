@@ -9,19 +9,8 @@ import { colors } from '../theme/colors';
 import type { EmployeeProfile } from '../types/auth';
 import type { ManagerContact, StaffDashboard } from '../types/dashboard';
 import type { IssueSummary } from '../types/issue';
+import { timeAgo } from '../utils/datetime';
 import { DashboardShell } from './DashboardShell';
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-  if (mins < 2) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days === 1) return 'yesterday';
-  return `${days}d ago`;
-}
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -48,18 +37,20 @@ export function StaffDashboardScreen({ token, employee }: { token: string; emplo
     setLoading(true);
     setError('');
     try {
-      const [all, dashboard] = await Promise.all([
-        listIssues(token),
+      // mine=true filters by reporter id on the server — no tenant-wide fetch,
+      // and no fragile name matching when two employees share a name.
+      const [mine, dashboard] = await Promise.all([
+        listIssues(token, { mine: true }),
         getDashboard('STAFF', token),
       ]);
-      setIssues(all.filter(i => i.reportedByName === employee.name));
+      setIssues(mine);
       setManagers((dashboard as StaffDashboard).managers);
     } catch {
       setError('Could not load your reports.');
     } finally {
       setLoading(false);
     }
-  }, [token, employee.name]);
+  }, [token]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -159,12 +150,6 @@ export function StaffDashboardScreen({ token, employee }: { token: string; emplo
           </View>
         )
       )}
-
-      <PrimaryButton
-        label="View All Issues"
-        variant="secondary"
-        onPress={() => navigate({ name: 'IssueList' })}
-      />
     </DashboardShell>
   );
 }

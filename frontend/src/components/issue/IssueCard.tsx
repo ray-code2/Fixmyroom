@@ -1,32 +1,22 @@
+import { memo } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { IssueSummary } from '../../types/issue';
 import { CATEGORY_LABELS } from '../../types/issue';
 import { photoUrl } from '../../api/issueApi';
 import { colors } from '../../theme/colors';
+import { timeAgo } from '../../utils/datetime';
 import { PriorityBadge } from './PriorityBadge';
 import { StatusBadge } from './StatusBadge';
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-  if (mins < 2) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days === 1) return 'Yesterday';
-  if (days < 7) return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-}
-
 interface Props {
   issue: IssueSummary;
-  onPress: () => void;
+  /** Stable callback receiving the issue id — lets memo() skip re-renders in long lists. */
+  onOpen: (issueId: string) => void;
 }
 
-export function IssueCard({ issue, onPress }: Props) {
+export const IssueCard = memo(function IssueCard({ issue, onOpen }: Props) {
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
+    <TouchableOpacity style={styles.card} onPress={() => onOpen(issue.id)} activeOpacity={0.75}>
       <View style={styles.headerRow}>
         {issue.photoUrl ? (
           <Image source={{ uri: photoUrl(issue.photoUrl) }} style={styles.thumb} resizeMode="cover" />
@@ -65,7 +55,7 @@ export function IssueCard({ issue, onPress }: Props) {
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

@@ -50,7 +50,7 @@ function parsePositiveCost(val: string): number | undefined {
 }
 
 export function UpdateStatusScreen({ issueId, currentStatus, token, employee }: Props) {
-  const { goBack } = useNavigation();
+  const { goBack, replace } = useNavigation();
   const [selected, setSelected] = useState<IssueStatus | null>(null);
   const [note, setNote] = useState('');
   const [estimatedCostStr, setEstimatedCostStr] = useState('');
@@ -79,8 +79,10 @@ export function UpdateStatusScreen({ issueId, currentStatus, token, employee }: 
         ...(showEstimate && estimatedCostStr ? { estimatedCost: parsePositiveCost(estimatedCostStr) } : {}),
         ...(showActual && actualCostStr ? { actualCost: parsePositiveCost(actualCostStr) } : {}),
       }, token);
+      // Pop this screen, then swap the stale detail underneath for a fresh one so the
+      // user lands on the ticket showing its new status (same pattern as AssignTechnician).
       goBack();
-      goBack();
+      replace({ name: 'IssueDetail', issueId, refreshKey: Date.now() });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to update status.');
     } finally {
@@ -188,7 +190,7 @@ export function UpdateStatusScreen({ issueId, currentStatus, token, employee }: 
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: '#FAF8F4' },
-  inner: { padding: 24, gap: 12, paddingBottom: 40 },
+  inner: { padding: 24, gap: 12, paddingBottom: 40, maxWidth: 760, width: '100%', alignSelf: 'center' },
   backBtn: { marginBottom: 4 },
   backText: { color: colors.coffee, fontWeight: '700', fontSize: 15 },
   heading: { fontSize: 24, fontWeight: '700', color: colors.black },

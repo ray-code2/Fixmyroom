@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,7 +11,6 @@ import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import { listIssues } from '../api/issueApi';
 import DateRangeFilter, { ALL_TIME, type DateRange } from '../components/DateRangeFilter';
 import { IssueCard } from '../components/issue/IssueCard';
-import { PrimaryButton } from '../components/PrimaryButton';
 import { useNavigation } from '../navigation/NavigationContext';
 import { colors } from '../theme/colors';
 import type { EmployeeProfile } from '../types/auth';
@@ -53,7 +51,7 @@ export function IssueListScreen({ token, employee }: Props) {
     setError('');
     setLoading(true);
     try {
-      setIssues(await listIssues(token, undefined, dateRange.from, dateRange.to));
+      setIssues(await listIssues(token, { from: dateRange.from, to: dateRange.to }));
     } catch {
       setError('Could not load issues. Check your connection.');
     } finally {
@@ -63,18 +61,26 @@ export function IssueListScreen({ token, employee }: Props) {
 
   useEffect(() => { void load(); }, [load]);
 
-  let displayed = issues;
-  if (searchText.trim()) {
-    const q = searchText.trim().toLowerCase();
-    displayed = displayed.filter(i =>
-      i.title.toLowerCase().includes(q) || i.ticketId.toLowerCase().includes(q)
-    );
-  }
-  if (quickTab === 'OPEN') displayed = displayed.filter(i => OPEN_STATUSES.has(i.status));
-  if (quickTab === 'DONE') displayed = displayed.filter(i => i.status === 'COMPLETED');
-  if (activeCategory) displayed = displayed.filter(i => i.category === activeCategory);
+  const openIssue = useCallback(
+    (issueId: string) => navigate({ name: 'IssueDetail', issueId }),
+    [navigate]
+  );
 
-  const canReport = employee.role === 'STAFF';
+  // Memoized so typing in the search box only re-renders changed cards (IssueCard is memo'd).
+  const displayed = useMemo(() => {
+    let result = issues;
+    if (searchText.trim()) {
+      const q = searchText.trim().toLowerCase();
+      result = result.filter(i =>
+        i.title.toLowerCase().includes(q) || i.ticketId.toLowerCase().includes(q)
+      );
+    }
+    if (quickTab === 'OPEN') result = result.filter(i => OPEN_STATUSES.has(i.status));
+    if (quickTab === 'DONE') result = result.filter(i => i.status === 'COMPLETED');
+    if (activeCategory) result = result.filter(i => i.category === activeCategory);
+    return result;
+  }, [issues, searchText, quickTab, activeCategory]);
+
   const hasActiveFilters = dateRange.from != null || activeCategory != null;
 
   return (
@@ -132,11 +138,7 @@ export function IssueListScreen({ token, employee }: Props) {
           <DateRangeFilter value={dateRange} onChange={setDateRange} />
 
           <Text style={styles.filterLabel}>Category</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipRow}
-          >
+          <View style={styles.chipRow}>
             {CATEGORY_FILTERS.map(f => (
               <TouchableOpacity
                 key={f.label}
@@ -148,7 +150,7 @@ export function IssueListScreen({ token, employee }: Props) {
                 </Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
 
           {hasActiveFilters && (
             <TouchableOpacity
@@ -184,20 +186,8 @@ export function IssueListScreen({ token, employee }: Props) {
       )}
 
       {displayed.map(issue => (
-        <IssueCard
-          key={issue.id}
-          issue={issue}
-          onPress={() => navigate({ name: 'IssueDetail', issueId: issue.id })}
-        />
+        <IssueCard key={issue.id} issue={issue} onOpen={openIssue} />
       ))}
-
-      {canReport && (
-        <PrimaryButton
-          label="Report New Issue"
-          onPress={() => navigate({ name: 'CreateIssue' })}
-          style={styles.cta}
-        />
-      )}
     </DashboardShell>
   );
 }
@@ -255,7 +245,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  chipRow: { flexDirection: 'row', gap: 8, paddingRight: 4 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 7,
@@ -274,5 +264,4 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingVertical: 48 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.black, marginBottom: 8 },
   emptyBody: { fontSize: 14, color: colors.muted, textAlign: 'center' },
-  cta: { marginTop: 12 },
 });

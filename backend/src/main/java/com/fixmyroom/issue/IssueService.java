@@ -108,12 +108,13 @@ public class IssueService {
     }
 
     public List<IssueSummaryResponse> list(UUID propertyId, String role, UUID employeeId,
-                                           IssueStatus statusFilter,
+                                           IssueStatus statusFilter, boolean mine, UUID roomId,
                                            LocalDate from, LocalDate to) {
         UUID assignedToFilter = "TECHNICIAN".equals(role) ? employeeId : null;
+        UUID reportedByFilter = mine ? employeeId : null;
         Instant fromInstant = from != null ? from.atStartOfDay(ZoneOffset.UTC).toInstant() : null;
         Instant toInstant   = to   != null ? to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant() : null;
-        return issueRepo.findByProperty(propertyId, statusFilter, assignedToFilter, fromInstant, toInstant)
+        return issueRepo.findByProperty(propertyId, statusFilter, assignedToFilter, reportedByFilter, roomId, fromInstant, toInstant)
                 .stream()
                 .map(IssueSummaryResponse::from)
                 .toList();

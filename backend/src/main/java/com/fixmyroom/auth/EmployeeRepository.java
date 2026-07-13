@@ -58,7 +58,7 @@ public class EmployeeRepository {
 
     public List<EmployeeTeamMember> findAllByBusiness(UUID businessId) {
         return jdbcTemplate.query("""
-                SELECT id, name, role, email FROM employees
+                SELECT id, name, role, email, notes, specialties FROM employees
                 WHERE business_id = ? AND role != 'MANAGER' AND active = TRUE
                 ORDER BY role, name
                 """,
@@ -66,7 +66,9 @@ public class EmployeeRepository {
                         rs.getObject("id", UUID.class),
                         rs.getString("name"),
                         rs.getString("role"),
-                        rs.getString("email")
+                        rs.getString("email"),
+                        rs.getString("notes"),
+                        splitCsv(rs.getString("specialties"))
                 ),
                 businessId
         );
@@ -117,13 +119,14 @@ public class EmployeeRepository {
 
     public List<EmployeeListResponse> findTechniciansByProperty(UUID businessId) {
         return jdbcTemplate.query("""
-                SELECT id, name FROM employees
+                SELECT id, name, specialties FROM employees
                 WHERE business_id = ? AND role = 'TECHNICIAN' AND active = TRUE
                 ORDER BY name
                 """,
                 (rs, row) -> new EmployeeListResponse(
                         rs.getObject("id", UUID.class),
-                        rs.getString("name")
+                        rs.getString("name"),
+                        splitCsv(rs.getString("specialties"))
                 ),
                 businessId
         );
@@ -152,6 +155,8 @@ public class EmployeeRepository {
             String phone,
             String email,
             String passwordHash,
+            String notes,
+            String specialtiesCsv,
             Instant createdAt
     ) {
         // Dual-write business_id + hotel_id during the rename transition window so a
@@ -159,9 +164,9 @@ public class EmployeeRepository {
         jdbcTemplate.update("""
                         INSERT INTO employees (
                             id, business_id, hotel_id, manager_id, name, role, language_preference, phone,
-                            email, password_hash, active, created_at, updated_at
+                            email, password_hash, notes, specialties, active, created_at, updated_at
                         )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)
                         """,
                 id,
                 businessId,
@@ -173,9 +178,19 @@ public class EmployeeRepository {
                 phone,
                 email.toLowerCase(),
                 passwordHash,
+                notes,
+                specialtiesCsv,
                 Timestamp.from(createdAt),
                 Timestamp.from(createdAt)
         );
+    }
+
+    private static List<String> splitCsv(String csv) {
+        if (csv == null || csv.isBlank()) return List.of();
+        return java.util.Arrays.stream(csv.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
     }
 
     private Optional<EmployeeRecord> findOne(String sql, Object... parameters) {
