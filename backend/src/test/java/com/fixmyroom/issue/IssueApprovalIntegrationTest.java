@@ -68,13 +68,13 @@ class IssueApprovalIntegrationTest {
 
         String hash = passwordEncoder.encode("Password123!");
         employeeRepo.createEmployee(managerAId, businessA, null, "Manager A",
-                EmployeeRole.MANAGER, "en", null, "managerA@test.com", hash, now);
+                EmployeeRole.MANAGER, "en", null, "managerA@test.com", hash, null, null, now);
         employeeRepo.createEmployee(staffAId, businessA, managerAId, "Staff A",
-                EmployeeRole.STAFF, "en", null, "staffA@test.com", hash, now);
+                EmployeeRole.STAFF, "en", null, "staffA@test.com", hash, null, null, now);
         employeeRepo.createEmployee(technicianAId, businessA, managerAId, "Tech A",
-                EmployeeRole.TECHNICIAN, "en", null, "techA@test.com", hash, now);
+                EmployeeRole.TECHNICIAN, "en", null, "techA@test.com", hash, null, null, now);
         employeeRepo.createEmployee(managerBId, businessB, null, "Manager B",
-                EmployeeRole.MANAGER, "en", null, "managerB@test.com", hash, now);
+                EmployeeRole.MANAGER, "en", null, "managerB@test.com", hash, null, null, now);
 
         managerAToken = login("managerA@test.com");
         staffAToken = login("staffA@test.com");

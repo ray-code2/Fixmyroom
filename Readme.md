@@ -1,12 +1,13 @@
 # Fix My Room (FMR)
 
-A B2B SaaS hotel maintenance tracker. Staff report room issues, managers assign technicians and track costs, technicians resolve and close tickets — all in one system.
+A B2B SaaS hotel maintenance & property management tracker. Staff and receptionists report room issues and record bookings, managers assign technicians and track costs, technicians resolve and close tickets — all in one system.
 
 ---
 
 ## What It Does
 
 - **Staff** report room problems (broken AC, leaking tap, faulty lock) from a mobile app
+- **Receptionists / Front Desk** record room bookings and manage room order data (Lightweight PMS), boosting property operations by connecting room availability with maintenance
 - **Manager** sees all open issues on a desktop dashboard, assigns technicians, and tracks estimated vs actual repair costs
 - **Technicians** log in to see their assigned tasks and update status as work progresses
 - Issues move through a clear lifecycle: `NEW → ASSIGNED → IN PROGRESS → WAITING PARTS → COMPLETED`
@@ -18,7 +19,7 @@ A B2B SaaS hotel maintenance tracker. Staff report room issues, managers assign 
 
 ## Who It's For
 
-Boutique hotels, villas, serviced apartments, and vacation rental managers who need a simple trackable system for room repairs — without spreadsheets or WhatsApp threads.
+Boutique hotels, villas, serviced apartments, and vacation rental managers and front desk receptionists who need a simple trackable system for room repairs and property bookings — without spreadsheets or WhatsApp threads.
 
 ---
 
