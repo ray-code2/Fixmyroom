@@ -16,4 +16,24 @@ Get-Content $envFile | ForEach-Object {
     [System.Environment]::SetEnvironmentVariable($key, $value, 'Process')
 }
 
-mvn spring-boot:run
+# Resolve Maven command (mvnw.cmd in backend dir -> system PATH `mvn` -> IntelliJ/IDE bundled `mvn.cmd`)
+$mvnCmd = $null
+
+$mvnwPath = Join-Path $PSScriptRoot 'mvnw.cmd'
+if (Test-Path $mvnwPath) {
+    $mvnCmd = $mvnwPath
+} elseif (Get-Command 'mvn' -ErrorAction SilentlyContinue) {
+    $mvnCmd = 'mvn'
+} else {
+    $ideMvn = Get-ChildItem -Path "C:\Program Files\JetBrains" -Filter "mvn.cmd" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+    if ($ideMvn -and (Test-Path $ideMvn)) {
+        $mvnCmd = $ideMvn
+    }
+}
+
+if (-not $mvnCmd) {
+    Write-Error "Maven could not be found. Please install Maven, add it to your PATH, or run via IntelliJ / VS Code."
+    exit 1
+}
+
+& $mvnCmd spring-boot:run
