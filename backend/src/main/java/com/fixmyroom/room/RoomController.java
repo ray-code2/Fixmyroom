@@ -48,6 +48,9 @@ public class RoomController {
         if (req.roomNumber() == null || req.roomNumber().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Room number is required.");
         }
+        if (req.roomNumber().trim().length() > 20) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Room number cannot exceed 20 characters.");
+        }
         if (roomRepository.existsByPropertyAndRoomNumber(propertyId, req.roomNumber().trim())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Room \"" + req.roomNumber().trim() + "\" already exists.");

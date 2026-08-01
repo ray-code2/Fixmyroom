@@ -49,7 +49,7 @@ function parseRangeExpression(raw: string): string[] {
       }
     }
 
-    if (t.length <= 30 && !seen.has(t)) { seen.add(t); result.push(t); }
+    if (t.length <= 20 && !seen.has(t)) { seen.add(t); result.push(t); }
   }
   return result;
 }
@@ -298,11 +298,13 @@ export function ManageRoomsScreen({ token, employee }: { token: string; employee
                 label={bulkSaving ? 'Creating…' : `Create ${preview.length} Room${preview.length !== 1 ? 's' : ''}`}
                 onPress={() => void handleBulkCreate()}
                 disabled={preview.length === 0 || bulkSaving}
+                fullWidth
               />
               <PrimaryButton
                 label="Cancel"
                 variant="secondary"
                 onPress={() => setMode('view')}
+                fullWidth
               />
             </View>
           </View>
@@ -321,6 +323,7 @@ export function ManageRoomsScreen({ token, employee }: { token: string; employee
               value={singleNumber}
               onChangeText={setSingleNumber}
               autoCapitalize="characters"
+              maxLength={20}
             />
 
             <View style={styles.rowFields}>
@@ -349,11 +352,13 @@ export function ManageRoomsScreen({ token, employee }: { token: string; employee
                 label={singleSaving ? 'Adding…' : 'Add Room'}
                 onPress={() => void handleSingleCreate()}
                 disabled={!singleNumber.trim() || singleSaving}
+                fullWidth
               />
               <PrimaryButton
                 label="Cancel"
                 variant="secondary"
                 onPress={() => setMode('view')}
+                fullWidth
               />
             </View>
           </View>
@@ -594,14 +599,18 @@ const styles = StyleSheet.create({
 
   roomChip: {
     backgroundColor: '#fff', borderRadius: 14, borderWidth: 1,
-    borderColor: colors.line, padding: 12, gap: 2, minWidth: 80,
+    borderColor: colors.line, paddingHorizontal: 14, paddingVertical: 12,
+    paddingRight: 42, gap: 2, minWidth: 100,
     position: 'relative',
   },
   roomChipNumber: { fontSize: 15, fontWeight: '700', color: colors.black },
   roomChipFloor: { fontSize: 11, color: colors.muted },
   roomChipType: { fontSize: 11, color: colors.coffee, fontWeight: '600' },
   deleteBtn: {
-    position: 'absolute', top: 8, right: 8,
+    position: 'absolute', top: 10, right: 10,
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: '#FFF4EF', borderWidth: 1, borderColor: '#F2C9BD',
+    alignItems: 'center', justifyContent: 'center',
   },
 
   modalOverlay: {
