@@ -159,17 +159,14 @@ public class EmployeeRepository {
             String specialtiesCsv,
             Instant createdAt
     ) {
-        // Dual-write business_id + hotel_id during the rename transition window so a
-        // rollback to pre-rename code (which still reads hotel_id) keeps working.
         jdbcTemplate.update("""
                         INSERT INTO employees (
-                            id, business_id, hotel_id, manager_id, name, role, language_preference, phone,
+                            id, business_id, manager_id, name, role, language_preference, phone,
                             email, password_hash, notes, specialties, active, created_at, updated_at
                         )
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)
                         """,
                 id,
-                businessId,
                 businessId,
                 managerId,
                 name,

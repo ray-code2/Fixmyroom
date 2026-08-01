@@ -270,11 +270,10 @@ public class IssueRepository {
                        IssueCategory category, IssuePriority priority, UUID reportedBy) {
         UUID id = UUID.randomUUID();
         Instant now = Instant.now();
-        // Dual-write business_id + hotel_id during the rename transition window.
         jdbc.update(
-                "INSERT INTO issues (id, business_id, hotel_id, room_id, title, description, category, priority, " +
-                "status, reported_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'NEW', ?, ?, ?)",
-                id, propertyId, propertyId, roomId, title, description, category.name(), priority.name(),
+                "INSERT INTO issues (id, business_id, room_id, title, description, category, priority, " +
+                "status, reported_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'NEW', ?, ?, ?)",
+                id, propertyId, roomId, title, description, category.name(), priority.name(),
                 reportedBy, Timestamp.from(now), Timestamp.from(now)
         );
         addStatusHistory(id, reportedBy, null, IssueStatus.NEW, null);
@@ -417,12 +416,11 @@ public class IssueRepository {
                           UUID reportedBy, UUID assignedTo, Instant createdAt) {
         Timestamp resolvedAt = isTerminal(status)
                 ? Timestamp.from(createdAt.plusSeconds(3600)) : null;
-        // Dual-write business_id + hotel_id during the rename transition window.
         jdbc.update(
-                "INSERT INTO issues (id, business_id, hotel_id, room_id, title, description, category, priority, " +
+                "INSERT INTO issues (id, business_id, room_id, title, description, category, priority, " +
                 "status, reported_by, assigned_to, created_at, updated_at, resolved_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                id, propertyId, propertyId, roomId, title, description, category.name(), priority.name(),
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                id, propertyId, roomId, title, description, category.name(), priority.name(),
                 status.name(), reportedBy, assignedTo,
                 Timestamp.from(createdAt), Timestamp.from(createdAt), resolvedAt
         );

@@ -11,6 +11,7 @@ import { useBreakpoint } from '../hooks/useBreakpoint';
 import { useNavigation } from '../navigation/NavigationContext';
 import { Screen } from '../components/Screen';
 import { colors } from '../theme/colors';
+import { CONTENT_MAX_WIDTH, CONTENT_PADDING_X } from '../theme/layout';
 import type { EmployeeProfile } from '../types/auth';
 
 // ── Mobile header ─────────────────────────────────────────────────────────────
@@ -66,8 +67,13 @@ export function DashboardShell({
     return (
       <Screen>
         <View style={layout.topBar}>
-          <Text style={layout.title}>{title}</Text>
-          <Text style={layout.subtitle}>{subtitle}</Text>
+          {/* Inner wrapper shares the content column's measure, so the title lines up
+              with the cards below it. The bar itself stays full-bleed so its border
+              and background still span the viewport. */}
+          <View style={layout.topBarInner}>
+            <Text style={layout.title}>{title}</Text>
+            <Text style={layout.subtitle}>{subtitle}</Text>
+          </View>
         </View>
         <ScrollView
           contentContainerStyle={layout.content}
@@ -104,13 +110,23 @@ export function DashboardShell({
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const layout = StyleSheet.create({
+  // Full-bleed: the border and background still span the viewport. The horizontal
+  // padding moved to topBarInner so it can share the content column's measure.
   topBar: {
-    paddingHorizontal: 32,
     paddingTop: 28,
     paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: colors.line,
     backgroundColor: colors.white,
+  },
+  // Same maxWidth AND same horizontal padding as `content` — both are required. An
+  // identical maxWidth with a different padding still leaves the title offset from
+  // the cards, which is what the 6px/246px drift was.
+  topBarInner: {
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
+    paddingHorizontal: CONTENT_PADDING_X,
     gap: 4,
   },
   title: {
@@ -125,12 +141,16 @@ const layout = StyleSheet.create({
     lineHeight: 20,
     maxWidth: 540,
   },
+  // Bounds EVERY child of the desktop content column, not just buttons. Without this
+  // the column is unbounded, so on a 1920px monitor cards, lists and the review queue
+  // all stretch edge to edge.
   content: {
-    padding: 32,
+    paddingHorizontal: CONTENT_PADDING_X,
+    paddingTop: CONTENT_PADDING_X,
     paddingBottom: 48,
     gap: 20,
-    maxWidth: 1080,
     width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
     alignSelf: 'center',
   },
 });

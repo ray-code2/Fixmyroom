@@ -67,11 +67,10 @@ public class RoomRepository {
 
     /** Used by seed/demo initializers that need stable, pre-defined IDs. */
     public UUID createRoom(UUID id, UUID propertyId, String unitNumber, String floor, String unitType) {
-        // Dual-write business_id + hotel_id during the rename transition window.
         jdbc.update(
-                "INSERT INTO rooms (id, business_id, hotel_id, room_number, floor, room_type, active, created_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, TRUE, ?)",
-                id, propertyId, propertyId, unitNumber, floor, unitType, Timestamp.from(Instant.now())
+                "INSERT INTO rooms (id, business_id, room_number, floor, room_type, active, created_at) " +
+                "VALUES (?, ?, ?, ?, ?, TRUE, ?)",
+                id, propertyId, unitNumber, floor, unitType, Timestamp.from(Instant.now())
         );
         return id;
     }

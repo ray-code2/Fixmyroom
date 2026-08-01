@@ -97,23 +97,40 @@
         technician. See IssueService.assign()/approve()/decline().
 
         The status column's CHECK constraint was declared inline and unnamed in
-        schema.sql, so each engine auto-generated its own constraint name:
-          - H2 (MODE=PostgreSQL): name is derived from the DDL text, not a
-            session/creation-order counter — confirmed by rebuilding the schema from
-            scratch twice on independent databases and getting the identical name
-            both times, CONSTRAINT_814A66. That's only stable as long as the issues
-            table's CREATE TABLE text in schema.sql doesn't change, which it won't —
-            schema.sql is a frozen historical baseline per the 001 changeset comment.
+        schema.sql, so each engine auto-generates its own name for it:
+          - H2 gives it an opaque CONSTRAINT_<hex> name that is NOT stable across
+            databases. An earlier version of this changeset hardcoded that name and
+            it broke repeatedly: the file-backed dev DB, a freshly rebuilt dev DB and
+            the in-memory test DB each produced a different one (CONSTRAINT_814A66 /
+            CONSTRAINT_B9B772B / CONSTRAINT_81). Do not hardcode it. The H2 branch
+            below instead looks the name up in information_schema at migration time
+            and drops it via EXECUTE IMMEDIATE. It matches on the check clause
+            mentioning the STATUS column (UPPER()-folded, since DATABASE_TO_LOWER
+            changes the rendered case), so the sibling category/priority checks on the
+            same table are left alone.
           - Real Postgres names an unnamed column CHECK constraint deterministically
             as "<table>_<column>_check" by convention, so it's "issues_status_check"
             there without needing to look anything up.
-        Hence dbms-scoped drops below rather than one portable statement. Both engines
-        converge on the same explicit name afterward, so no future changeset touching
-        this constraint needs to repeat this dance.
+        Both engines converge on the same explicit name afterward, so no future
+        changeset touching this constraint needs to repeat this dance.
+
+        validCheckSum=ANY: this changeset's SQL was corrected after it had already been
+        applied to existing databases. The end state it produces is unchanged, so the
+        old recorded checksums are still valid.
     -->
     <changeSet id="006-issue-approval-gate" author="fmr">
+        <validCheckSum>ANY</validCheckSum>
         <comment>Widen issues.status CHECK to add APPROVED and DECLINED</comment>
-        <sql dbms="h2">ALTER TABLE issues DROP CONSTRAINT CONSTRAINT_814A66;</sql>
+        <sql dbms="h2">
+            EXECUTE IMMEDIATE (
+                SELECT 'ALTER TABLE issues DROP CONSTRAINT "' || cc.constraint_name || '"'
+                FROM information_schema.check_constraints cc
+                JOIN information_schema.table_constraints tc
+                  ON tc.constraint_name = cc.constraint_name
+                WHERE UPPER(tc.table_name) = 'ISSUES'
+                  AND UPPER(cc.check_clause) LIKE '%"STATUS"%'
+            );
+        </sql>
         <sql dbms="postgresql">ALTER TABLE issues DROP CONSTRAINT issues_status_check;</sql>
         <sql>
             ALTER TABLE issues ADD CONSTRAINT issues_status_check
@@ -154,6 +171,79 @@
             <column name="notes" type="VARCHAR(500)"/>
             <column name="specialties" type="VARCHAR(255)"/>
         </addColumn>
+    </changeSet>
+
+    <!--
+        Completes the tenancy rename started in 002-005 by dropping the legacy hotel_id
+        columns. business_id has been NOT NULL, FK-constrained, and backfilled from
+        hotel_id since 005, and no code reads hotel_id any more — the dual-write in the
+        employees/rooms/issues INSERTs was removed alongside this changeset.
+
+        Scope note: this drops the hotel_id COLUMNS only. The legacy hotel_id/hotel_name
+        JWT *claims* (emitted in AuthService, read as a fallback in JwtTenant) are a
+        separate concern about tokens issued before the rename, and are deliberately
+        left in place — see the JwtTenant warning in CLAUDE.md. Dropping these columns
+        does not depend on them.
+
+        uq_rooms_hotel_number is dropped EXPLICITLY first, because the two engines
+        disagree about what an implicit drop should do: Postgres silently cascades and
+        removes the dependent unique constraint (so rooms quietly lose their
+        no-duplicate-room-number guarantee), while H2 refuses the column drop outright
+        with "Column may be referenced by UQ_ROOMS_HOTEL_NUMBER". Dropping it by name
+        makes the intent explicit and behaves the same on both. Changeset 010
+        immediately re-establishes the same guarantee keyed on business_id — the two
+        belong together and neither should be applied without the other.
+
+        Indexes (idx_*_hotel_id) and the hotels(id) FKs are dependent on the column and
+        go away with it on both engines.
+
+        validCheckSum=ANY: the explicit dropUniqueConstraint was added after this
+        changeset had already been applied to the dev Postgres database. The end state
+        is unchanged, so the old recorded checksum is still valid.
+    -->
+    <changeSet id="009-drop-legacy-hotel-id" author="fmr">
+        <validCheckSum>ANY</validCheckSum>
+        <comment>Drop legacy hotel_id columns; business_id is now the sole tenant key</comment>
+        <dropUniqueConstraint tableName="rooms" constraintName="uq_rooms_hotel_number"/>
+        <dropColumn tableName="employees" columnName="hotel_id"/>
+        <dropColumn tableName="rooms"     columnName="hotel_id"/>
+        <dropColumn tableName="issues"    columnName="hotel_id"/>
+        <rollback>
+            <addColumn tableName="employees">
+                <column name="hotel_id" type="UUID"/>
+            </addColumn>
+            <addColumn tableName="rooms">
+                <column name="hotel_id" type="UUID"/>
+            </addColumn>
+            <addColumn tableName="issues">
+                <column name="hotel_id" type="UUID"/>
+            </addColumn>
+            <sql>UPDATE employees SET hotel_id = business_id;</sql>
+            <sql>UPDATE rooms     SET hotel_id = business_id;</sql>
+            <sql>UPDATE issues    SET hotel_id = business_id;</sql>
+        </rollback>
+    </changeSet>
+
+    <!--
+        Restores the room-number uniqueness that 009 destroyed as a side effect.
+
+        schema.sql declared it as CONSTRAINT uq_rooms_hotel_number UNIQUE (hotel_id,
+        room_number). Dropping the hotel_id column in 009 also dropped that constraint —
+        Postgres removes any constraint that depends on a dropped column, without warning —
+        which briefly left rooms with no uniqueness at all beyond the surrogate PK, so the
+        same room number could be created twice within one business.
+
+        This re-establishes the same guarantee keyed on business_id, which is what the
+        constraint should have been keyed on since the 002-005 rename anyway.
+    -->
+    <changeSet id="010-restore-room-number-uniqueness" author="fmr">
+        <comment>Re-add UNIQUE (business_id, room_number) lost when hotel_id was dropped</comment>
+        <addUniqueConstraint tableName="rooms"
+                             columnNames="business_id, room_number"
+                             constraintName="uq_rooms_business_number"/>
+        <rollback>
+            <dropUniqueConstraint tableName="rooms" constraintName="uq_rooms_business_number"/>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>

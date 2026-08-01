@@ -82,7 +82,7 @@ export function RegisterPage() {
       setStep(3);
     } catch (err) {
       if (err instanceof TypeError) {
-        setError('Cannot connect to the FMR server. Make sure the backend is running at localhost:8080 and try again.');
+        setError(`Cannot connect to the FMR server at ${API_URL}. Make sure the backend is running and try again.`);
       } else {
         setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
       }

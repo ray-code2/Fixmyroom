@@ -15,11 +15,15 @@ type SubmitLeadResult =
 const LOCAL_LEADS_KEY = 'fmr_phase1_leads';
 
 export async function submitLead(payload: LeadPayload): Promise<SubmitLeadResult> {
-  const apiUrl = import.meta.env.VITE_LEADS_API_URL;
+  // Unset on purpose in a static marketing deploy with no backend behind it —
+  // leads are then kept in localStorage rather than lost.
+  const baseUrl = import.meta.env.VITE_API_URL;
 
-  if (!apiUrl) {
+  if (!baseUrl) {
     return saveLeadLocally(payload);
   }
+
+  const apiUrl = `${baseUrl.replace(/\/+$/, '')}/api/leads`;
 
   try {
     const response = await fetch(apiUrl, {
