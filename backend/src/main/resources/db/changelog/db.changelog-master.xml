@@ -204,10 +204,10 @@
     <changeSet id="009-drop-legacy-hotel-id" author="fmr">
         <validCheckSum>ANY</validCheckSum>
         <comment>Drop legacy hotel_id columns; business_id is now the sole tenant key</comment>
-        <dropUniqueConstraint tableName="rooms" constraintName="uq_rooms_hotel_number"/>
-        <dropColumn tableName="employees" columnName="hotel_id"/>
-        <dropColumn tableName="rooms"     columnName="hotel_id"/>
-        <dropColumn tableName="issues"    columnName="hotel_id"/>
+        <sql>ALTER TABLE rooms DROP CONSTRAINT IF EXISTS uq_rooms_hotel_number;</sql>
+        <sql>ALTER TABLE employees DROP COLUMN IF EXISTS hotel_id;</sql>
+        <sql>ALTER TABLE rooms     DROP COLUMN IF EXISTS hotel_id;</sql>
+        <sql>ALTER TABLE issues    DROP COLUMN IF EXISTS hotel_id;</sql>
         <rollback>
             <addColumn tableName="employees">
                 <column name="hotel_id" type="UUID"/>
@@ -237,6 +237,12 @@
         constraint should have been keyed on since the 002-005 rename anyway.
     -->
     <changeSet id="010-restore-room-number-uniqueness" author="fmr">
+        <validCheckSum>ANY</validCheckSum>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <uniqueConstraintExists tableName="rooms" constraintName="uq_rooms_business_number"/>
+            </not>
+        </preConditions>
         <comment>Re-add UNIQUE (business_id, room_number) lost when hotel_id was dropped</comment>
         <addUniqueConstraint tableName="rooms"
                              columnNames="business_id, room_number"
