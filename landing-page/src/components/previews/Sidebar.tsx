@@ -4,12 +4,10 @@ export function Sidebar() {
   return (
     <aside className="hidden w-56 shrink-0 border-r border-[#eadfd2] bg-[#fffdf9] p-4 lg:block">
       <div className="flex items-center gap-3">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#3b2418] text-[11px] font-black text-white">
-          FMR
-        </span>
+        <img src="/satin-icon.png" alt="Satin. Icon" className="h-8 w-8 object-contain shrink-0" />
         <div>
-          <p className="text-sm font-black text-[#1c1714]">Fix My Room</p>
-          <p className="text-xs text-[#8a786b]">Operations</p>
+          <p className="text-base font-black text-[#1c1714]">Satin.</p>
+          <p className="text-[9px] font-extrabold text-[#3b2418] uppercase tracking-wider">MAINTENANCE PLATFORM</p>
         </div>
       </div>
       <nav className="mt-8 grid gap-1">

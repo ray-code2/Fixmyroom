@@ -12,7 +12,7 @@ export function FixHistorySection() {
             Start tracking your <BrushText>fix history</BrushText>.
           </h2>
           <p className="mt-5 text-lg leading-8 text-[#6f625a]">
-            FMR keeps every room issue, repair action, vendor dispatch, and proof-of-fix record in
+            Satin. keeps every room issue, repair action, vendor dispatch, and proof-of-fix record in
             one place, so your team always knows what happened, when it happened, and who handled it.
           </p>
 

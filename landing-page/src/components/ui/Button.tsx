@@ -3,9 +3,9 @@ import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'reac
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'dark';
 
 const variantClass: Record<ButtonVariant, string> = {
-  primary: 'border-[#4b2e1f] bg-[#4b2e1f] text-white shadow-[0_12px_30px_rgba(75,46,31,0.18)] hover:bg-[#2f1c13]',
-  secondary: 'border-[#d8c6b5] bg-[#fffaf3] text-[#171412] hover:border-[#4b2e1f] hover:bg-white',
-  ghost: 'border-transparent bg-transparent text-[#4b2e1f] hover:bg-[#f3eadf]',
+  primary: 'border-[#4A2E1E] bg-[#4A2E1E] text-white shadow-[0_12px_30px_rgba(74,46,30,0.18)] hover:bg-[#3B2418]',
+  secondary: 'border-[#d8c6b5] bg-[#fffaf3] text-[#171412] hover:border-[#4A2E1E] hover:bg-white',
+  ghost: 'border-transparent bg-transparent text-[#4A2E1E] hover:bg-[#f3eadf]',
   dark: 'border-white bg-white text-[#241812] hover:bg-[#f8f1e9]'
 };
 
@@ -29,7 +29,7 @@ type ButtonProps = LinkButtonProps | NativeButtonProps;
 
 export function Button({ children, variant = 'primary', className = '', href, ...props }: ButtonProps) {
   const classes = [
-    'fmr-button inline-flex h-12 items-center justify-center rounded-full border px-5 text-sm transition duration-200 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4b2e1f]',
+    'satin-button inline-flex h-12 items-center justify-center rounded-full border px-5 text-sm transition duration-200 hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4A2E1E]',
     variantClass[variant],
     className
   ]

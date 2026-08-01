@@ -37,6 +37,8 @@ const ROLE_LABELS: Record<string, string> = {
 
 const SIDEBAR_BG = '#1E120B';
 const NAV_ACTIVE_COLOR = colors.white;
+import { SatinLogo } from '../components/SatinLogo';
+
 const NAV_IDLE_COLOR = '#B8A89A';
 
 function AppSidebar({ employee, onCollapse }: { employee: EmployeeProfile; onCollapse: () => void }) {
@@ -49,13 +51,7 @@ function AppSidebar({ employee, onCollapse }: { employee: EmployeeProfile; onCol
       <View style={sb.container}>
         {/* Brand */}
         <View style={sb.brand}>
-          <View style={sb.brandMark}>
-            <Text style={sb.brandText}>FMR</Text>
-          </View>
-          <View>
-            <Text style={sb.brandName}>Fix My Room</Text>
-            <Text style={sb.brandTagline}>maintenance tracker</Text>
-          </View>
+          <SatinLogo size="sm" showTagline={false} iconColor="#C7A36B" textColor="#AE9E91" />
         </View>
 
         {/* Hotel chip */}
@@ -200,7 +196,7 @@ export function AppNavigator() {
     return (
       <Screen style={rt.center}>
         <ActivityIndicator color={colors.coffee} />
-        <Text style={rt.loadingText}>Loading FMR…</Text>
+        <Text style={rt.loadingText}>Loading Satin.…</Text>
       </Screen>
     );
   }

@@ -1,4 +1,4 @@
-import { beforeFmrProblems, problems, withFmrOutcomes } from '../../data/landingPage';
+import { beforeSatinProblems, problems, withSatinOutcomes } from '../../data/landingPage';
 import { BrushText } from '../ui/BrushText';
 
 export function ProblemSection() {
@@ -12,24 +12,24 @@ export function ProblemSection() {
           </h2>
           <p className="mt-5 text-lg leading-8 text-[#6f625a]">
             When room issues are handled through chats, paper notes, or verbal updates, managers
-            lose visibility. FMR turns every reported problem into a structured repair record with
-            photos, AI classification, approval status, vendor dispatch, and proof-of-fix history.
+            lose visibility. Satin. turns every reported problem into a structured repair record with
+            photos, triage classification, approval status, technician dispatch, and proof-of-fix history.
           </p>
         </div>
 
         <div className="mt-12 grid gap-5 lg:grid-cols-2">
           <ComparisonPanel
-            eyebrow="Before FMR"
+            eyebrow="Before Satin."
             title="Repair history gets buried in the daily noise."
             description="Many boutique hotels, villas, and glamping resorts still rely on WhatsApp groups, verbal updates, paper notes, or memory."
-            items={beforeFmrProblems}
+            items={beforeSatinProblems}
             tone="messy"
           />
           <ComparisonPanel
-            eyebrow="With FMR"
+            eyebrow="With Satin."
             title="Every issue becomes a clean repair record."
             description="Managers can see what was fixed, who fixed it, when it was fixed, which vendor was contacted, and whether proof was uploaded."
-            items={withFmrOutcomes}
+            items={withSatinOutcomes}
             tone="organized"
           />
         </div>

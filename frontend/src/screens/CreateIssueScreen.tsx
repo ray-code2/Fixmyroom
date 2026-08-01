@@ -164,9 +164,9 @@ export function CreateIssueScreen({ token }: Props) {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {/* Reached as a bottom-nav tab (no history) or pushed from a dashboard CTA */}
         {canGoBack && (
-          <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
+          <View style={styles.backRow}>
+            <PrimaryButton label="← Back" variant="secondary" size="sm" inline onPress={goBack} />
+          </View>
         )}
 
         <Text style={styles.heading}>Report an Issue</Text>
@@ -509,4 +509,5 @@ const styles = StyleSheet.create({
   },
   error: { color: colors.danger, fontWeight: '600', fontSize: 13 },
   cta: { marginTop: 4 },
+  backRow: { alignSelf: 'flex-start' },
 });

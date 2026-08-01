@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   disabled: { opacity: 0.62 },
-  // transform only — never animate width/height.
-  pressed: { transform: [{ translateY: 1 }] },
+  // transform only — GPU accelerated press interaction
+  pressed: { transform: [{ translateY: 1 }, { scale: 0.985 }] },
   label: { fontWeight: '600' },
 });

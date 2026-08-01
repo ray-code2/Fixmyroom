@@ -63,7 +63,7 @@ export function AuthCard({
   return (
     <View style={styles.card}>
       <View style={styles.heading}>
-        <Text style={styles.title}>Sign in to FMR</Text>
+        <Text style={styles.title}>Sign in to Satin.</Text>
         <Text style={styles.subtitle}>
           Enter your credentials to access your maintenance workspace.
         </Text>
@@ -97,6 +97,7 @@ export function AuthCard({
           loading={submitting}
           disabled={submitting}
           onPress={onLoginSubmit}
+          fullWidth
         />
         <Pressable
           accessibilityRole="button"
@@ -113,7 +114,7 @@ export function AuthCard({
 
           <Text style={styles.forgotBoxRow}>
             <Text style={styles.forgotBoxLabel}>Staff & Technicians — </Text>
-            Ask your manager to reset it via the FMR app under Manage Team.
+            Ask your manager to reset it via the Satin. app under Manage Team.
           </Text>
 
           <View style={styles.managerSection}>

@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { getRoom, type Room } from '../api/roomApi';
 import { listIssues } from '../api/issueApi';
 import { IssueCard } from '../components/issue/IssueCard';
+import { PrimaryButton } from '../components/PrimaryButton';
 import { Screen } from '../components/Screen';
 import { useNavigation } from '../navigation/NavigationContext';
 import { colors } from '../theme/colors';
@@ -24,24 +25,26 @@ export function RoomDetailScreen({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const load = useCallback(async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const [r, roomIssues] = await Promise.all([
+      const [r, allIssues] = await Promise.all([
         getRoom(roomId, token),
-        listIssues(token, { roomId }),
+        listIssues(token),
       ]);
       setRoom(r);
-      setIssues(roomIssues.slice(0, 10));
-    } catch {
-      setError('Could not load room details.');
+      setIssues(allIssues.filter((i) => i.unitNumber === r.unitNumber));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load room details.');
     } finally {
       setLoading(false);
     }
   }, [roomId, token]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
   const openIssue = useCallback(
     (issueId: string) => navigate({ name: 'IssueDetail', issueId }),
@@ -51,9 +54,9 @@ export function RoomDetailScreen({
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity onPress={goBack} style={styles.backRow}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
+        <View style={styles.backRow}>
+          <PrimaryButton label="← Back" variant="secondary" size="sm" inline onPress={goBack} />
+        </View>
 
         {loading && <ActivityIndicator color={colors.coffee} style={{ marginTop: 32 }} />}
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -114,9 +117,6 @@ export function RoomDetailScreen({
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 16, paddingBottom: 60, maxWidth: 760, width: '100%', alignSelf: 'center' },
 
-  backRow: { marginBottom: 2 },
-  backText: { color: colors.coffee, fontWeight: '600', fontSize: 14 },
-
   errorText: { fontSize: 13, color: colors.danger, fontWeight: '600' },
 
   roomCard: {
@@ -161,4 +161,5 @@ const styles = StyleSheet.create({
     borderColor: colors.line, padding: 20, alignItems: 'center',
   },
   emptyText: { fontSize: 13, color: colors.muted, fontStyle: 'italic' },
+  backRow: { alignSelf: 'flex-start' },
 });

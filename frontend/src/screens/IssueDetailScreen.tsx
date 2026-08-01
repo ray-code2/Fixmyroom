@@ -168,9 +168,9 @@ export function IssueDetailScreen({ issueId, refreshKey, token, employee }: Prop
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
         {/* Back */}
-        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
+        <View style={styles.backRow}>
+          <PrimaryButton label="← Back" variant="secondary" size="sm" inline onPress={goBack} />
+        </View>
 
         {loading && <ActivityIndicator color={colors.coffee} style={styles.loader} />}
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -651,4 +651,5 @@ const styles = StyleSheet.create({
   },
   lightboxImage: { width: '100%', height: '80%' },
   lightboxHint: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: 16 },
+  backRow: { alignSelf: 'flex-start' },
 });

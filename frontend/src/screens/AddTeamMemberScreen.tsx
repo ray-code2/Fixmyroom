@@ -92,9 +92,9 @@ export function AddTeamMemberScreen({ token }: Props) {
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {canGoBack && (
-            <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-              <Text style={styles.backText}>← Back</Text>
-            </TouchableOpacity>
+            <View style={styles.backRow}>
+              <PrimaryButton label="← Back" variant="secondary" size="sm" inline onPress={goBack} />
+            </View>
           )}
           <Text style={styles.heading}>Add Team Member</Text>
           <Text style={styles.sub}>
@@ -267,4 +267,5 @@ const styles = StyleSheet.create({
   successText: { fontSize: 14, color: colors.success, fontWeight: '600' },
   addAnother: { fontSize: 13, color: colors.coffee, fontWeight: '600', textDecorationLine: 'underline' },
   cta: { marginTop: 4 },
+  backRow: { alignSelf: 'flex-start' },
 });

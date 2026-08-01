@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { API_BASE_URL } from '../config/env';
 import { Screen } from '../components/Screen';
 import { colors } from '../theme/colors';
+import { SatinLogo } from '../components/SatinLogo';
 
 interface Props {
   token: string;
@@ -45,7 +46,7 @@ export function ResetPasswordScreen({ token }: Props) {
     <Screen style={styles.screen}>
       <View style={styles.card}>
         <View style={styles.brand}>
-          <Text style={styles.brandText}>FMR</Text>
+          <SatinLogo size="sm" showTagline={false} />
         </View>
         <Text style={styles.title}>Set new password</Text>
         <Text style={styles.subtitle}>Enter a new password for your manager account.</Text>

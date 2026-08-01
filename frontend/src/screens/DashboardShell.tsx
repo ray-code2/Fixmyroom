@@ -14,6 +14,8 @@ import { colors } from '../theme/colors';
 import { CONTENT_MAX_WIDTH, CONTENT_PADDING_X } from '../theme/layout';
 import type { EmployeeProfile } from '../types/auth';
 
+import { SatinLogo } from '../components/SatinLogo';
+
 // ── Mobile header ─────────────────────────────────────────────────────────────
 
 function MobileHeader({ employee }: { employee: EmployeeProfile }) {
@@ -23,9 +25,7 @@ function MobileHeader({ employee }: { employee: EmployeeProfile }) {
   return (
     <View style={mobile.header}>
       <View style={mobile.brandRow}>
-        <View style={mobile.brandMark}>
-          <Text style={mobile.brandText}>FMR</Text>
-        </View>
+        <SatinLogo size="sm" showTagline={false} />
         <View style={mobile.headerText}>
           <Text style={mobile.hotel} numberOfLines={1}>{employee.businessName}</Text>
           <Text style={mobile.employee}>
@@ -101,7 +101,7 @@ export function DashboardShell({
         <Text style={mobile.title}>{title}</Text>
         <Text style={mobile.subtitle}>{subtitle}</Text>
         <View style={mobile.childrenGap}>{children}</View>
-        <Text style={mobile.copyright}>© Fix My Room. All rights reserved.</Text>
+        <Text style={mobile.copyright}>© Satin. All rights reserved.</Text>
       </ScrollView>
     </Screen>
   );

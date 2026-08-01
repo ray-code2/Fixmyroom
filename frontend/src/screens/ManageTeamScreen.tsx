@@ -250,17 +250,19 @@ export function ManageTeamScreen({ token, employee: _ }: { token: string; employ
                         label={outcome?.status === 'saving' ? 'Saving…' : 'Set Password'}
                         disabled={newPassword.length < 8 || outcome?.status === 'saving'}
                         onPress={() => { void submitReset(); }}
+                        fullWidth
                       />
                       <PrimaryButton
                         label="Cancel"
                         variant="secondary"
                         onPress={cancelReset}
+                        fullWidth
                       />
                     </View>
                   )}
 
                   {outcome?.status === 'done' && (
-                    <PrimaryButton label="Done" variant="secondary" onPress={cancelReset} />
+                    <PrimaryButton label="Done" variant="secondary" onPress={cancelReset} fullWidth />
                   )}
                 </View>
               )}

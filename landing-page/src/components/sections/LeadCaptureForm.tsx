@@ -52,7 +52,7 @@ export function LeadCaptureForm() {
       setStatus('success');
       setStatusMessage(
         submitResult.mode === 'api'
-          ? 'Thanks. Your request was sent to the FMR team.'
+          ? 'Thanks. Your request was sent to the Satin. team.'
           : 'Thanks. Your request is saved for this local preview.'
       );
       setValues(initialLeadValues);
@@ -282,10 +282,10 @@ function SegmentedControl<TValue extends string>({
               type="button"
               aria-pressed={selected}
               onClick={() => onChange(option.value)}
-              className={`fmr-button min-h-10 flex-1 rounded-full border px-3 py-2 text-center text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4b2e1f] ${
+              className={`satin-button min-h-10 flex-1 rounded-full border px-3 py-2 text-center text-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4A2E1E] ${
                 selected
-                  ? 'border-[#4b2e1f] bg-[#4b2e1f] text-white'
-                  : 'border-[#eadfd2] bg-white text-[#4d3a31] hover:border-[#4b2e1f]'
+                  ? 'border-[#4A2E1E] bg-[#4A2E1E] text-white'
+                  : 'border-[#eadfd2] bg-white text-[#4d3a31] hover:border-[#4A2E1E]'
               }`}
             >
               {option.label}

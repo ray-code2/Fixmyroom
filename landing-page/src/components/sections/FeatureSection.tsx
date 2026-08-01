@@ -71,7 +71,7 @@ export function FeatureSection() {
   return (
     <SectionContainer
       id="features"
-      eyebrow="Why teams choose FMR"
+      eyebrow="Why teams choose Satin."
       title={
         <>
           Every benefit your maintenance team needs,{' '}

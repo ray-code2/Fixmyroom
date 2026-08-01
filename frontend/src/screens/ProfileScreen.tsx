@@ -1,6 +1,6 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../auth/AuthContext';
-import { PrimaryButton } from '../components/PrimaryButton';
+import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
 import { useNavigation } from '../navigation/NavigationContext';
 import { colors } from '../theme/colors';
@@ -39,9 +39,9 @@ export function ProfileScreen({ employee }: Props) {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
-        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
+        <View style={styles.topRow}>
+          <Button label="← Back" variant="secondary" size="sm" inline onPress={goBack} />
+        </View>
 
         {/* Avatar section */}
         <View style={styles.avatarSection}>
@@ -70,11 +70,11 @@ export function ProfileScreen({ employee }: Props) {
         </View>
 
         {/* Sign out */}
-        <PrimaryButton
+        <Button
           label="Sign Out"
           onPress={logout}
           variant="danger"
-          style={styles.signOutBtn}
+          fullWidth
         />
 
         <Text style={styles.version}>FixMyRoom v1.0 · Property Maintenance</Text>
@@ -94,8 +94,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 48, gap: 20, maxWidth: 760, width: '100%', alignSelf: 'center' },
-  backBtn: { marginBottom: 4 },
-  backText: { color: colors.coffee, fontWeight: '700', fontSize: 15 },
+  topRow: { alignSelf: 'flex-start' },
 
   avatarSection: { alignItems: 'center', gap: 12, paddingVertical: 16 },
   avatar: {

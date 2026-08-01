@@ -34,7 +34,7 @@ export const problems = [
   },
 ];
 
-export const beforeFmrProblems = [
+export const beforeSatinProblems = [
   'AC problem mentioned in group chat',
   'No assigned owner — who handles it?',
   'Status unknown — fixed or ignored?',
@@ -43,7 +43,7 @@ export const beforeFmrProblems = [
   'Manager follows up via WhatsApp days later',
 ];
 
-export const withFmrOutcomes = [
+export const withSatinOutcomes = [
   'Issue logged with room, photo, and category',
   'Technician assigned by manager',
   'Status visible to all: In Progress',
@@ -255,9 +255,9 @@ export const pricingPlans = [
 
 export const faqs = [
   {
-    question: 'What roles does FMR support?',
+    question: 'What roles does Satin. support?',
     answer:
-      'FMR has three roles: Staff (reports issues with photos), Manager (assigns technicians, reviews costs, and views finance reports), and Technician (works on issues and logs cost breakdowns). Each role has a dedicated dashboard tailored to their tasks.',
+      'Satin. has three roles: Staff (reports issues with photos), Manager (assigns technicians, reviews costs, and views finance reports), and Technician (works on issues and logs cost breakdowns). Each role has a dedicated dashboard tailored to their tasks.',
   },
   {
     question: 'How does cost tracking work?',
@@ -275,9 +275,9 @@ export const faqs = [
       'Yes. Managers can add staff, managers, or technicians individually by entering name, email, role, and phone. You can also bulk-upload your entire team by uploading a CSV file.',
   },
   {
-    question: 'Does FMR replace our PMS or hotel software?',
+    question: 'Does Satin. replace our PMS or hotel software?',
     answer:
-      'No. FMR is a focused maintenance tracker for room repairs. It handles issue reporting, technician assignment, status tracking, cost approval, and maintenance history — not reservations, billing, or guest check-in.',
+      'No. Satin. is a focused maintenance tracker for room repairs. It handles issue reporting, technician assignment, status tracking, cost approval, and maintenance history — not reservations, billing, or guest check-in.',
   },
   {
     question: 'Can staff see each other\'s reported issues?',

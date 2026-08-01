@@ -8,7 +8,7 @@ import { Screen } from '../components/Screen';
 import { colors } from '../theme/colors';
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const footerText = '© 2026 FMR — Fix My Room. All rights reserved.';
+const footerText = '© 2026 Satin. All rights reserved.';
 
 export function AuthPage() {
   const { width } = useWindowDimensions();

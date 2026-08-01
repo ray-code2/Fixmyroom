@@ -1,11 +1,11 @@
 export const workflowSteps = [
   {
     title: 'Snap the issue',
-    body: 'Staff take a photo, choose the room, and add one short note or voice-to-text description.'
+    body: 'Staff take a photo, choose the room, and add one short note or description.'
   },
   {
-    title: 'AI triages the report',
-    body: 'FMR predicts the likely category, urgency, summary, recommended action, and diagnostic checklist.'
+    title: 'Smart issue triage',
+    body: 'Satin. organizes the category, urgency, summary, recommended action, and diagnostic checklist.'
   },
   {
     title: 'Manager approves',
@@ -56,12 +56,12 @@ export const features = [
     body: 'Staff can report problems quickly without long forms or technical wording.'
   },
   {
-    title: 'AI issue classification',
+    title: 'Smart issue classification',
     body: 'Managers get a suggested category, urgency, summary, and diagnostic checklist.'
   },
   {
     title: 'Approval workflow',
-    body: 'AI helps prepare the next step, but managers stay in control before dispatch or purchase action.'
+    body: 'System helps prepare the next step, but managers stay in control before dispatch or purchase action.'
   },
   {
     title: 'Supplier contact routing',
@@ -79,29 +79,29 @@ export const features = [
 
 export const faqs = [
   {
-    question: 'Does FMR automatically call vendors or buy parts?',
+    question: 'Does Satin. automatically call vendors or buy parts?',
     answer:
-      'No. The MVP keeps manager approval before any external dispatch, vendor contact, or purchase action.'
+      'No. The platform keeps manager approval before any external dispatch, vendor contact, or purchase action.'
   },
   {
     question: 'Can hotels use their own repair contacts?',
     answer:
-      'Yes. Phase 1 of the product uses each hotel, villa, or resort operator approved supplier list, not a public marketplace.'
+      'Yes. Satin. uses each hotel, villa, or resort operator approved supplier list, not a public marketplace.'
   },
   {
-    question: 'Does FMR replace our PMS?',
+    question: 'Does Satin. replace our PMS?',
     answer:
-      'No. FMR focuses on maintenance triage, dispatch approval, proof-of-fix, and maintenance history. PMS integration can come later.'
+      'No. Satin. focuses on maintenance triage, dispatch approval, proof-of-fix, and maintenance history. PMS integration can come later.'
   },
   {
-    question: 'What happens if AI triage fails?',
+    question: 'What happens if automatic triage needs fallback?',
     answer:
-      'The ticket still exists. FMR shows a clear fallback state and lets the manager classify, assign, or dispatch manually.'
+      'The ticket still exists. Satin. shows a clear fallback state and lets the manager classify, assign, or dispatch manually.'
   },
   {
     question: 'Can staff use it with weak internet?',
     answer:
-      'The MVP plan includes local draft saving for staff reports. Full offline sync can be added after pilot validation.'
+      'The platform includes local draft saving for staff reports. Full offline sync can be added after pilot validation.'
   }
 ];
 

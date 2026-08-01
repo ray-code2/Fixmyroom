@@ -110,9 +110,9 @@ export function AssignTechnicianScreen({ issueId, token }: Props) {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
-        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
+        <View style={styles.backRow}>
+          <PrimaryButton label="← Back" variant="secondary" size="sm" inline onPress={goBack} />
+        </View>
 
         <Text style={styles.heading}>Assign Technician</Text>
         <Text style={styles.sub}>
@@ -224,4 +224,5 @@ const styles = StyleSheet.create({
   matchBadgeText: { fontSize: 10, fontWeight: '700', color: colors.success, letterSpacing: 0.3 },
   check: { fontSize: 18, color: colors.coffee, fontWeight: '700' },
   cta: { marginTop: 4 },
+  backRow: { alignSelf: 'flex-start' },
 });

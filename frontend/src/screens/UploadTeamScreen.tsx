@@ -69,9 +69,9 @@ export function UploadTeamScreen({ token, employee: _ }: { token: string; employ
     <Screen>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {canGoBack && (
-          <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-            <Text style={styles.backText}>← Back</Text>
-          </TouchableOpacity>
+          <View style={styles.backRow}>
+            <PrimaryButton label="← Back" variant="secondary" size="sm" inline onPress={goBack} />
+          </View>
         )}
         <View style={styles.titleRow}>
           <Text style={styles.title}>Upload Team via Excel</Text>
@@ -133,7 +133,7 @@ export function UploadTeamScreen({ token, employee: _ }: { token: string; employ
             </TouchableOpacity>
 
             {state.status === 'picked' && (
-              <PrimaryButton label="Upload Team" onPress={() => void upload()} />
+              <PrimaryButton label="Upload Team" onPress={() => void upload()} fullWidth />
             )}
           </>
         )}
@@ -170,8 +170,10 @@ export function UploadTeamScreen({ token, employee: _ }: { token: string; employ
               </View>
             )}
 
-            <PrimaryButton label="Upload Another File" onPress={reset} />
-            <PrimaryButton label="Done" variant="secondary" onPress={goBack} />
+            <View style={styles.actionContainer}>
+              <PrimaryButton label="Upload Another File" onPress={reset} fullWidth />
+              <PrimaryButton label="Done" variant="secondary" onPress={goBack} fullWidth />
+            </View>
           </>
         )}
 
@@ -181,7 +183,7 @@ export function UploadTeamScreen({ token, employee: _ }: { token: string; employ
             <View style={[styles.uploadingBox, { backgroundColor: colors.dangerBg }]}>
               <Text style={[styles.uploadingText, { color: colors.danger }]}>{state.message}</Text>
             </View>
-            <PrimaryButton label="Try Again" onPress={reset} />
+            <PrimaryButton label="Try Again" onPress={reset} fullWidth />
           </>
         )}
       </ScrollView>
@@ -273,4 +275,10 @@ const styles = StyleSheet.create({
   errorRowInfo: { flex: 1 },
   errorEmail: { fontSize: 13, fontWeight: '600', color: colors.black },
   errorReason: { fontSize: 12, color: colors.danger, marginTop: 2 },
+  actionContainer: {
+    width: '100%',
+    gap: 12,
+    marginTop: 8,
+  },
+  backRow: { alignSelf: 'flex-start' },
 });

@@ -16,7 +16,7 @@ export function CTASection() {
             Replace your WhatsApp repair group with a real maintenance system.
           </h2>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-[#e7d9cb]">
-            Share your property size and team setup. FMR will qualify demo and pilot operators
+            Share your property size and team setup. Satin. will qualify demo and pilot operators
             for the first implementation wave.
           </p>
           <div className="mt-8 grid gap-3">

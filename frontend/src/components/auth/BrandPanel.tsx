@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../theme/colors';
+import { SatinLogo } from '../SatinLogo';
 
 const bullets = [
   'Photo-based issue reporting for any property type',
@@ -16,20 +17,14 @@ export function BrandPanel({ compact = false }: { compact?: boolean }) {
   return (
     <View style={[styles.panel, compact ? styles.compactPanel : null]}>
       <View style={styles.logoRow}>
-        <View style={styles.logo}>
-          <Text style={styles.logoText}>FMR</Text>
-        </View>
-        <View>
-          <Text style={styles.brand}>Fix My Room</Text>
-          <Text style={styles.tagline}>Maintenance OS</Text>
-        </View>
+        <SatinLogo size={compact ? 'sm' : 'lg'} />
       </View>
 
       <Text style={[styles.headline, compact ? styles.compactHeadline : null]}>
         Fix room issues before they become bad reviews.
       </Text>
       <Text style={styles.copy}>
-        FMR helps property teams turn staff-reported problems into tracked repair tickets,
+        Satin. helps property teams turn staff-reported problems into tracked repair tickets,
         manager-approved actions, and a complete fix history per unit.
       </Text>
 

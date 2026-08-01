@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState({ status: 'authenticated', token: auth.accessToken, employee: auth.employee });
     } catch (error) {
       if (error instanceof ApiClientError) throw error;
-      throw new Error('Unable to reach the FMR API. Check the backend URL and network connection.');
+      throw new Error('Unable to reach the Satin. API. Check the backend URL and network connection.');
     }
   }, []);
 
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setState({ status: 'authenticated', token: auth.accessToken, employee: auth.employee });
     } catch (error) {
       if (error instanceof ApiClientError) throw error;
-      throw new Error('Unable to reach the FMR API. Check the backend URL and network connection.');
+      throw new Error('Unable to reach the Satin. API. Check the backend URL and network connection.');
     }
   }, []);
 

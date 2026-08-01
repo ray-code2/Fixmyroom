@@ -96,13 +96,13 @@ export function RegisterPage() {
       {/* Navbar */}
       <header className="sticky top-0 z-50 border-b border-[#eadfd2] bg-white/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <a href="#" onClick={() => { window.location.hash = ''; }} className="flex items-center gap-3" aria-label="FMR home">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#4b2e1f] text-[11px] font-semibold text-white">
-              FMR
-            </span>
+          <a href="#" onClick={() => { window.location.hash = ''; }} className="flex items-center gap-3.5" aria-label="Satin home">
+            <img src="/satin-icon.png" alt="Satin. Icon" className="h-11 w-11 object-contain shrink-0" />
             <span>
-              <span className="block text-sm font-semibold leading-4 text-[#171412]">Fix My Room</span>
-              <span className="block text-xs font-medium leading-4 text-[#7a6b61]">Property maintenance</span>
+              <span className="block text-2xl font-black leading-5 text-[#171412] tracking-tight">Satin.</span>
+              <span className="block text-[10px] font-extrabold leading-3 text-[#3b2418] tracking-wider uppercase mt-1">
+                HOTEL &amp; PROPERTY MAINTENANCE PLATFORM
+              </span>
             </span>
           </a>
           <a href="#" onClick={() => { window.location.hash = ''; }} className="text-sm font-medium text-[#6b5c53] transition hover:text-[#171412]">
@@ -135,7 +135,7 @@ export function RegisterPage() {
         <div className="rounded-3xl border border-[#eadfd2] bg-white p-8 shadow-[0_20px_60px_rgba(75,46,31,0.09)]">
           {step === 1 && (
             <form onSubmit={handleStep1}>
-              <h1 className="text-2xl font-bold text-[#171412]">Connect your property to FMR</h1>
+              <h1 className="text-2xl font-bold text-[#171412]">Connect your property to Satin.</h1>
               <p className="mt-2 text-sm text-[#6b5c53]">
                 Set up your maintenance workspace in 2 minutes.
               </p>
@@ -259,10 +259,10 @@ export function RegisterPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-[#171412]">
-                  {form.propertyName} is live on FMR!
+                  {form.propertyName} is live on Satin.!
                 </h1>
                 <p className="mt-3 text-sm text-[#6b5c53]">
-                  Your workspace is ready. Download the FMR app and sign in with:
+                  Your workspace is ready. Open the Satin. app and sign in with:
                 </p>
                 <p className="mt-2 rounded-xl bg-[#fbfaf7] px-4 py-3 font-mono text-sm font-semibold text-[#4b2e1f]">
                   {registeredEmail}
@@ -273,7 +273,7 @@ export function RegisterPage() {
                 <p className="text-xs font-bold uppercase text-[#9e8f85]">Next steps</p>
                 <ol className="mt-3 flex flex-col gap-2">
                   {[
-                    'Open the FMR app on your phone',
+                    'Open the Satin. app on your phone',
                     'Sign in with your email and password',
                     'Add your units (rooms, villas, apartments)',
                     'Add your staff and technicians from the dashboard',
@@ -301,7 +301,7 @@ export function RegisterPage() {
         </div>
 
         <p className="mt-8 text-center text-xs text-[#9e8f85]">
-          © 2026 FMR — Fix My Room. All rights reserved.
+          © 2026 Satin. All rights reserved.
         </p>
       </main>
     </div>

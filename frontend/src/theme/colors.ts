@@ -1,10 +1,10 @@
 export const colors = {
-  coffee: '#4B2E1F',
-  coffeeDark: '#241812',
+  coffee: '#4A2E1E',
+  coffeeDark: '#3B2418',
   black: '#171412',
   muted: '#6F625A',
   line: '#EADFD2',
-  ivory: '#FBFAF7',
+  ivory: '#FAF8F5',
   white: '#FFFFFF',
   danger: '#B42318',
   dangerBg: '#FEF2F2',
