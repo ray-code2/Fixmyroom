@@ -79,7 +79,8 @@ public class AuthService {
         String address = (request.address() != null && !request.address().isBlank())
                 ? request.address().trim() : "";
 
-        employeeRepository.createBusiness(businessId, request.propertyName().trim(), address, "UTC", now);
+        employeeRepository.createBusiness(businessId, request.propertyName().trim(), address, "UTC",
+                request.propertyType(), request.preferredCurrency(), now);
         employeeRepository.createEmployee(
                 managerId, businessId, null, request.managerName().trim(),
                 EmployeeRole.MANAGER, "en", null, email,

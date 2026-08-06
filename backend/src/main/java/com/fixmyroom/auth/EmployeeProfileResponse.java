@@ -11,7 +11,9 @@ public record EmployeeProfileResponse(
         EmployeeRole role,
         String languagePreference,
         String phone,
-        String email
+        String email,
+        String propertyType,
+        String preferredCurrency
 ) {
     static EmployeeProfileResponse from(EmployeeRecord employee) {
         return new EmployeeProfileResponse(
@@ -23,7 +25,9 @@ public record EmployeeProfileResponse(
                 employee.role(),
                 employee.languagePreference(),
                 employee.phone(),
-                employee.email()
+                employee.email(),
+                employee.propertyType(),
+                employee.preferredCurrency()
         );
     }
 }

@@ -1,6 +1,8 @@
 package com.fixmyroom.room;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record RoomRecord(
@@ -10,5 +12,9 @@ public record RoomRecord(
         String floor,
         String unitType,
         boolean active,
-        Instant createdAt
+        Instant createdAt,
+        BigDecimal monthlyRent,
+        BigDecimal vacancyRatePerDay,
+        LocalDate vacancyStart
 ) {}
+

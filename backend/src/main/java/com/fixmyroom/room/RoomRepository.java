@@ -3,6 +3,8 @@ package com.fixmyroom.room;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.math.BigDecimal;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -22,7 +24,8 @@ public class RoomRepository {
 
     public List<RoomRecord> findActiveByProperty(UUID propertyId) {
         return jdbc.query(
-                "SELECT id, business_id, room_number, floor, room_type, active, created_at " +
+                "SELECT id, business_id, room_number, floor, room_type, active, created_at, " +
+                "monthly_rent, vacancy_rate_per_day, vacancy_start " +
                 "FROM rooms WHERE business_id = ? AND active = TRUE ORDER BY room_number",
                 this::map, propertyId
         );
@@ -30,7 +33,8 @@ public class RoomRepository {
 
     public Optional<RoomRecord> findByIdAndProperty(UUID id, UUID propertyId) {
         List<RoomRecord> rows = jdbc.query(
-                "SELECT id, business_id, room_number, floor, room_type, active, created_at " +
+                "SELECT id, business_id, room_number, floor, room_type, active, created_at, " +
+                "monthly_rent, vacancy_rate_per_day, vacancy_start " +
                 "FROM rooms WHERE id = ? AND business_id = ?",
                 this::map, id, propertyId
         );
@@ -75,7 +79,18 @@ public class RoomRepository {
         return id;
     }
 
+    /** Update vacancy fields and monthly rent for a room. */
+    public void updateRevenueFields(UUID id, BigDecimal monthlyRent, BigDecimal vacancyRatePerDay, java.time.LocalDate vacancyStart) {
+        jdbc.update(
+                "UPDATE rooms SET monthly_rent = ?, vacancy_rate_per_day = ?, vacancy_start = ? WHERE id = ?",
+                monthlyRent, vacancyRatePerDay,
+                vacancyStart != null ? Date.valueOf(vacancyStart) : null,
+                id
+        );
+    }
+
     private RoomRecord map(ResultSet rs, int row) throws SQLException {
+        Date vsDate = rs.getDate("vacancy_start");
         return new RoomRecord(
                 UUID.fromString(rs.getString("id")),
                 UUID.fromString(rs.getString("business_id")),
@@ -83,7 +98,10 @@ public class RoomRepository {
                 rs.getString("floor"),
                 rs.getString("room_type"),
                 rs.getBoolean("active"),
-                rs.getTimestamp("created_at").toInstant()
+                rs.getTimestamp("created_at").toInstant(),
+                rs.getBigDecimal("monthly_rent"),
+                rs.getBigDecimal("vacancy_rate_per_day"),
+                vsDate != null ? vsDate.toLocalDate() : null
         );
     }
 }

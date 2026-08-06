@@ -252,4 +252,112 @@
         </rollback>
     </changeSet>
 
+    <!-- =========================================================
+         Revenue & Loss Tracker — additive schema extensions
+         011: property_type + preferred_currency on businesses
+         012: tenants table
+         013: rent_payments table
+         014: vacancy + monthly_rent columns on rooms
+         All changesets are purely additive; no existing data is touched.
+         ========================================================= -->
+
+    <changeSet id="011-business-revenue-settings" author="fmr">
+        <comment>Add property_type and preferred_currency to businesses for adaptive UI and multi-currency support</comment>
+        <addColumn tableName="businesses">
+            <column name="property_type" type="VARCHAR(20)" defaultValue="APARTMENT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="preferred_currency" type="VARCHAR(10)" defaultValue="USD">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="businesses" columnName="property_type"/>
+            <dropColumn tableName="businesses" columnName="preferred_currency"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="012-create-tenants" author="fmr">
+        <comment>Tenants: people who rent/occupy units (not app users — no auth account)</comment>
+        <createTable tableName="tenants">
+            <column name="id" type="UUID"><constraints primaryKey="true"/></column>
+            <column name="business_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="room_id" type="UUID"><constraints nullable="true"/></column>
+            <column name="name" type="VARCHAR(100)"><constraints nullable="false"/></column>
+            <column name="phone" type="VARCHAR(30)"/>
+            <column name="email" type="VARCHAR(120)"/>
+            <column name="check_in_date" type="DATE"/>
+            <column name="check_out_date" type="DATE"/>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true"><constraints nullable="false"/></column>
+            <column name="notes" type="VARCHAR(500)"/>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE"><constraints nullable="false"/></column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="tenants" baseColumnNames="business_id"
+                                 constraintName="fk_tenants_business"
+                                 referencedTableName="businesses" referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="tenants" baseColumnNames="room_id"
+                                 constraintName="fk_tenants_room"
+                                 referencedTableName="rooms" referencedColumnNames="id"/>
+        <createIndex tableName="tenants" indexName="idx_tenants_business_id">
+            <column name="business_id"/>
+        </createIndex>
+        <createIndex tableName="tenants" indexName="idx_tenants_room_id">
+            <column name="room_id"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="tenants"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="013-create-rent-payments" author="fmr">
+        <comment>Rent payments per tenant per month — tracks paid/unpaid/partial status</comment>
+        <createTable tableName="rent_payments">
+            <column name="id" type="UUID"><constraints primaryKey="true"/></column>
+            <column name="tenant_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="business_id" type="UUID"><constraints nullable="false"/></column>
+            <column name="room_id" type="UUID"><constraints nullable="true"/></column>
+            <column name="period_year" type="INTEGER"><constraints nullable="false"/></column>
+            <column name="period_month" type="INTEGER"><constraints nullable="false"/></column>
+            <column name="due_date" type="DATE"/>
+            <column name="paid_date" type="DATE"/>
+            <column name="amount_due" type="NUMERIC(14,2)"><constraints nullable="false"/></column>
+            <column name="amount_paid" type="NUMERIC(14,2)" defaultValueNumeric="0"/>
+            <column name="currency" type="VARCHAR(10)" defaultValue="USD"><constraints nullable="false"/></column>
+            <column name="status" type="VARCHAR(20)" defaultValue="UNPAID"><constraints nullable="false"/></column>
+            <column name="notes" type="VARCHAR(500)"/>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE"><constraints nullable="false"/></column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE"><constraints nullable="false"/></column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="rent_payments" baseColumnNames="tenant_id"
+                                 constraintName="fk_rent_payments_tenant"
+                                 referencedTableName="tenants" referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="rent_payments" baseColumnNames="business_id"
+                                 constraintName="fk_rent_payments_business"
+                                 referencedTableName="businesses" referencedColumnNames="id"/>
+        <createIndex tableName="rent_payments" indexName="idx_rent_payments_business_id">
+            <column name="business_id"/>
+        </createIndex>
+        <createIndex tableName="rent_payments" indexName="idx_rent_payments_tenant_id">
+            <column name="tenant_id"/>
+        </createIndex>
+        <rollback>
+            <dropTable tableName="rent_payments"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="014-rooms-vacancy-rent" author="fmr">
+        <comment>Add monthly_rent and vacancy tracking fields to rooms</comment>
+        <addColumn tableName="rooms">
+            <column name="monthly_rent" type="NUMERIC(14,2)"/>
+            <column name="vacancy_rate_per_day" type="NUMERIC(10,2)"/>
+            <column name="vacancy_start" type="DATE"/>
+        </addColumn>
+        <rollback>
+            <dropColumn tableName="rooms" columnName="monthly_rent"/>
+            <dropColumn tableName="rooms" columnName="vacancy_rate_per_day"/>
+            <dropColumn tableName="rooms" columnName="vacancy_start"/>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

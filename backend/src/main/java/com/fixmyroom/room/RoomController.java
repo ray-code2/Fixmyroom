@@ -10,6 +10,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -112,6 +114,23 @@ public class RoomController {
         }
         roomRepository.deactivateRoom(id);
         return new DeleteRoomResponse(false, issueCount);
+    }
+
+    /** PATCH /api/rooms/{id}/revenue — update rent + vacancy settings without touching issue history */
+    @PatchMapping("/{id}/revenue")
+    @PreAuthorize("hasRole('MANAGER')")
+    public RoomResponse updateRevenueFields(
+            @PathVariable UUID id,
+            @RequestBody RoomRevenueRequest req,
+            @AuthenticationPrincipal Jwt jwt) {
+        UUID propertyId = JwtTenant.businessId(jwt);
+        roomRepository.findByIdAndProperty(id, propertyId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found."));
+        BigDecimal monthlyRent = req.monthlyRent() != null ? BigDecimal.valueOf(req.monthlyRent()) : null;
+        BigDecimal ratePerDay = req.vacancyRatePerDay() != null ? BigDecimal.valueOf(req.vacancyRatePerDay()) : null;
+        roomRepository.updateRevenueFields(id, monthlyRent, ratePerDay, req.vacancyStart());
+        return roomRepository.findByIdAndProperty(id, propertyId)
+                .map(RoomResponse::from).orElseThrow();
     }
 
     private static String blank(String v) {

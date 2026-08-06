@@ -5,6 +5,15 @@ export interface Room {
   unitNumber: string;
   floor: string | null;
   unitType: string | null;
+  monthlyRent: number | null;
+  vacancyRatePerDay: number | null;
+  vacancyStart: string | null;  // ISO date YYYY-MM-DD
+}
+
+export interface RoomRevenuePayload {
+  monthlyRent?: number | null;
+  vacancyRatePerDay?: number | null;
+  vacancyStart?: string | null;
 }
 
 export interface BulkCreateResult {
@@ -45,4 +54,13 @@ export interface DeleteRoomResult {
  */
 export function deleteRoom(roomId: string, token: string): Promise<DeleteRoomResult> {
   return apiRequest<DeleteRoomResult>(`/api/rooms/${roomId}`, { method: 'DELETE', token });
+}
+
+/** Update rent amount and vacancy settings for a room. */
+export function updateRoomRevenueFields(
+  roomId: string,
+  payload: RoomRevenuePayload,
+  token: string,
+): Promise<Room> {
+  return apiRequest<Room>(`/api/rooms/${roomId}/revenue`, { method: 'PATCH', body: payload, token });
 }

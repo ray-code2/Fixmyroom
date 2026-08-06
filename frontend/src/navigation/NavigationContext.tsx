@@ -15,7 +15,10 @@ export type AppScreen =
   | { name: 'UpdateStatus'; issueId: string; currentStatus: string }
   | { name: 'Finance' }
   | { name: 'ManageRooms' }
-  | { name: 'RoomDetail'; roomId: string };
+  | { name: 'RoomDetail'; roomId: string }
+  | { name: 'RevenueDashboard' }
+  | { name: 'RentTracking' }
+  | { name: 'VacancyTracker' };
 
 type StackEntry = AppScreen;
 

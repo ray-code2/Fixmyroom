@@ -22,7 +22,7 @@ public class EmployeeRepository {
 
     public Optional<EmployeeRecord> findActiveByEmail(String email) {
         return findOne("""
-                SELECT e.*, b.name AS business_name
+                SELECT e.*, b.name AS business_name, b.property_type, b.preferred_currency
                 FROM employees e
                 JOIN businesses b ON b.id = e.business_id
                 WHERE LOWER(e.email) = LOWER(?) AND e.active = TRUE
@@ -31,7 +31,7 @@ public class EmployeeRepository {
 
     public Optional<EmployeeRecord> findActiveById(UUID id) {
         return findOne("""
-                SELECT e.*, b.name AS business_name
+                SELECT e.*, b.name AS business_name, b.property_type, b.preferred_currency
                 FROM employees e
                 JOIN businesses b ON b.id = e.business_id
                 WHERE e.id = ? AND e.active = TRUE
@@ -76,7 +76,7 @@ public class EmployeeRepository {
 
     public Optional<EmployeeRecord> findByIdAndBusiness(UUID id, UUID businessId) {
         return findOne("""
-                SELECT e.*, b.name AS business_name
+                SELECT e.*, b.name AS business_name, b.property_type, b.preferred_currency
                 FROM employees e
                 JOIN businesses b ON b.id = e.business_id
                 WHERE e.id = ? AND e.business_id = ? AND e.active = TRUE
@@ -132,15 +132,18 @@ public class EmployeeRepository {
         );
     }
 
-    public void createBusiness(UUID id, String name, String address, String timezone, Instant createdAt) {
+    public void createBusiness(UUID id, String name, String address, String timezone,
+                               String propertyType, String preferredCurrency, Instant createdAt) {
         jdbcTemplate.update("""
-                        INSERT INTO businesses (id, name, address, timezone, created_at)
-                        VALUES (?, ?, ?, ?, ?)
+                        INSERT INTO businesses (id, name, address, timezone, property_type, preferred_currency, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
                         """,
                 id,
                 name,
                 address,
                 timezone,
+                propertyType != null ? propertyType.toUpperCase() : "APARTMENT",
+                preferredCurrency != null ? preferredCurrency.toUpperCase() : "USD",
                 Timestamp.from(createdAt)
         );
     }
@@ -210,7 +213,9 @@ public class EmployeeRepository {
                 resultSet.getString("phone"),
                 resultSet.getString("email"),
                 resultSet.getString("password_hash"),
-                resultSet.getBoolean("active")
+                resultSet.getBoolean("active"),
+                resultSet.getString("property_type"),
+                resultSet.getString("preferred_currency")
         );
     }
 }

@@ -26,6 +26,9 @@ import { RoomDetailScreen } from './RoomDetailScreen';
 import { UploadTeamScreen } from './UploadTeamScreen';
 import { ProfileScreen } from './ProfileScreen';
 import FinanceDashboardScreen from './FinanceDashboardScreen';
+import RevenueDashboardScreen from './RevenueDashboardScreen';
+import RentTrackingScreen from './RentTrackingScreen';
+import VacancyTrackerScreen from './VacancyTrackerScreen';
 
 const ROLE_LABELS: Record<string, string> = {
   MANAGER: 'Hotel Manager',
@@ -152,13 +155,19 @@ function AppRouter({ token, employee }: { token: string; employee: EmployeeProfi
         );
       case 'Finance':
         return <FinanceDashboardScreen />;
+      case 'RevenueDashboard':
+        return <RevenueDashboardScreen />;
+      case 'RentTracking':
+        return <RentTrackingScreen />;
+      case 'VacancyTracker':
+        return <VacancyTrackerScreen />;
       case 'ManageRooms':
         return <ManageRoomsScreen token={token} employee={employee} />;
       case 'RoomDetail':
         return <RoomDetailScreen roomId={current.roomId} token={token} employee={employee} />;
       case 'Dashboard':
       default:
-        if (employee.role === 'MANAGER') return <ManagerDashboardScreen token={token} employee={employee} />;
+        if (employee.role === 'MANAGER') return <RevenueDashboardScreen />;
         if (employee.role === 'TECHNICIAN') return <TechnicianDashboardScreen token={token} employee={employee} />;
         return <StaffDashboardScreen token={token} employee={employee} />;
     }

@@ -127,7 +127,7 @@ public class DemoDataInitializer implements ApplicationRunner {
     private void seedDemoProperty(Instant now) {
         if (!employeeRepo.businessExists(HOTEL_ID)) {
             employeeRepo.createBusiness(HOTEL_ID, "FMR Demo Boutique Property",
-                    "12 Harbor Lane, Demo City", "Asia/Bangkok", now);
+                    "12 Harbor Lane, Demo City", "Asia/Bangkok", "HOTEL", "USD", now);
             log.info("Seeded demo property {}", HOTEL_ID);
         }
 
@@ -204,7 +204,7 @@ public class DemoDataInitializer implements ApplicationRunner {
     private void seedSunniress(Instant now) {
         if (!employeeRepo.businessExists(SUN_HOTEL_ID)) {
             employeeRepo.createBusiness(SUN_HOTEL_ID, "Sunniress",
-                    "Kuala Lumpur, Malaysia", "Asia/Kuala_Lumpur", now);
+                    "Kuala Lumpur, Malaysia", "Asia/Kuala_Lumpur", "HOTEL", "USD", now);
             log.info("Seeded Sunniress hotel {}", SUN_HOTEL_ID);
         }
 

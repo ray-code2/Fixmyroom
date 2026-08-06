@@ -1,5 +1,8 @@
 export type EmployeeRole = 'STAFF' | 'MANAGER' | 'TECHNICIAN';
 
+/** Supported property types — drives adaptive UI labels */
+export type PropertyType = 'HOTEL' | 'APARTMENT' | 'AIRBNB' | 'BOARDING_HOUSE' | 'COMMERCIAL';
+
 export type EmployeeProfile = {
   id: string;
   businessId: string;
@@ -10,6 +13,10 @@ export type EmployeeProfile = {
   languagePreference: string;
   phone: string | null;
   email: string;
+  /** Drives adaptive UI: hotel hides rent tracker; apartment/airbnb shows it */
+  propertyType: PropertyType | null;
+  /** ISO 4217 currency code, e.g. USD, IDR */
+  preferredCurrency: string | null;
 };
 
 export type AuthResponse = {
@@ -30,4 +37,6 @@ export type RegisterPayload = {
   managerName: string;
   email: string;
   password: string;
+  propertyType?: PropertyType;
+  preferredCurrency?: string;
 };

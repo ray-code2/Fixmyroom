@@ -13,6 +13,8 @@ public record EmployeeRecord(
         String phone,
         String email,
         String passwordHash,
-        boolean active
+        boolean active,
+        String propertyType,
+        String preferredCurrency
 ) {
 }

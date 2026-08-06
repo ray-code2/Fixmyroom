@@ -1,6 +1,9 @@
 import type { ComponentType } from 'react';
 import {
+  BarChart3,
+  Building2,
   ClipboardList,
+  CreditCard,
   DoorOpen,
   FilePlus,
   LayoutDashboard,
@@ -29,11 +32,12 @@ export function getNavItems(role: string): NavItem[] {
   switch (role) {
     case 'MANAGER':
       return [
-        { label: 'Dashboard',    shortLabel: 'Home',    screen: { name: 'Dashboard' },   icon: LayoutDashboard },
-        { label: 'All Issues',   shortLabel: 'Issues',  screen: { name: 'IssueList' },   icon: ClipboardList },
-        { label: 'Finance',      shortLabel: 'Finance', screen: { name: 'Finance' },     icon: TrendingUp },
-        { label: 'Manage Rooms', shortLabel: 'Rooms',   screen: { name: 'ManageRooms' }, icon: DoorOpen },
-        { label: 'Manage Team',  shortLabel: 'Team',    screen: { name: 'ManageTeam' },  icon: Users },
+        { label: 'Revenue',      shortLabel: 'Revenue',  screen: { name: 'RevenueDashboard' }, icon: BarChart3 },
+        { label: 'Rent & Tenants', shortLabel: 'Rent',   screen: { name: 'RentTracking' },     icon: CreditCard },
+        { label: 'Vacancy',      shortLabel: 'Vacancy',  screen: { name: 'VacancyTracker' },   icon: Building2 },
+        { label: 'Maintenance',  shortLabel: 'Maint.',   screen: { name: 'Finance' },          icon: TrendingUp },
+        { label: 'Manage Rooms', shortLabel: 'Rooms',    screen: { name: 'ManageRooms' },      icon: DoorOpen },
+        { label: 'Manage Team',  shortLabel: 'Team',     screen: { name: 'ManageTeam' },       icon: Users },
       ];
     case 'STAFF':
       return [
@@ -50,6 +54,7 @@ export function getNavItems(role: string): NavItem[] {
       return [{ label: 'Dashboard', shortLabel: 'Home', screen: { name: 'Dashboard' }, icon: LayoutDashboard }];
   }
 }
+
 
 /** Child screens highlight their parent nav destination. */
 const PARENT_SCREEN: Partial<Record<AppScreen['name'], AppScreen['name']>> = {
