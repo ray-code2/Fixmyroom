@@ -38,14 +38,14 @@ public class EmailService {
         asyncSend(managerEmails,
                 "New maintenance issue: " + issueTitle,
                 "A new maintenance issue has been reported" + unit + ":\n\n\""
-                        + issueTitle + "\"\n\nLog in to FMR to assign it to a technician.");
+                        + issueTitle + "\"\n\nLog in to Satin to assign it to a technician.");
     }
 
     public void sendAssignedNotification(String techEmail, String issueTitle) {
         asyncSend(List.of(techEmail),
                 "You've been assigned: " + issueTitle,
                 "You have been assigned to a maintenance issue:\n\n\""
-                        + issueTitle + "\"\n\nLog in to FMR to view details and update the status.");
+                        + issueTitle + "\"\n\nLog in to Satin to view details and update the status.");
     }
 
     public void sendCostSubmittedNotification(List<String> managerEmails, String issueTitle) {
@@ -53,7 +53,7 @@ public class EmailService {
         asyncSend(managerEmails,
                 "Cost submitted for approval: " + issueTitle,
                 "A cost report has been submitted for your approval:\n\n\""
-                        + issueTitle + "\"\n\nLog in to FMR to review and approve or reject it.");
+                        + issueTitle + "\"\n\nLog in to Satin to review and approve or reject it.");
     }
 
     public void sendCostApprovedNotification(String techEmail, String issueTitle) {
@@ -67,22 +67,22 @@ public class EmailService {
                 "Cost rejected: " + issueTitle,
                 "Your cost report was rejected:\n\n\"" + issueTitle
                         + "\"\n\nReason: " + reason
-                        + "\n\nPlease update your cost report in FMR.");
+                        + "\n\nPlease update your cost report in Satin.");
     }
 
     public void sendPasswordResetEmail(String managerEmail, String token) {
         String link = appBaseUrl + "?reset=" + token;
 
-        String plain = "You requested a password reset for your Fix My Room account.\n\n"
+        String plain = "You requested a password reset for your Satin account.\n\n"
                 + "Click the link below to reset your password (valid for 30 minutes):\n\n"
                 + link
                 + "\n\nIf you did not request this, you can safely ignore this email.";
 
-        asyncSendHtml(managerEmail, "Reset your FMR password",
+        asyncSendHtml(managerEmail, "Reset your Satin password",
                 buildPasswordResetHtml(link), plain);
     }
 
-    /** FMR-branded HTML for the password reset email. Inline styles only — email clients ignore <style> blocks and external CSS. */
+    /** Satin-branded HTML for the password reset email. Inline styles only — email clients ignore <style> blocks and external CSS. */
     private String buildPasswordResetHtml(String link) {
         return """
                 <!DOCTYPE html>
@@ -90,7 +90,7 @@ public class EmailService {
                 <head>
                   <meta charset="utf-8">
                   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                  <title>Reset your FMR password</title>
+                  <title>Reset your Satin password</title>
                 </head>
                 <body style="margin:0; padding:0; background-color:#F5F0EB; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
                   <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background-color:#F5F0EB; padding:32px 16px;">
@@ -103,7 +103,7 @@ public class EmailService {
                               <table role="presentation" cellpadding="0" cellspacing="0">
                                 <tr>
                                   <td style="width:44px; height:44px; background-color:#4B2E1F; border-radius:12px; text-align:center; vertical-align:middle;">
-                                    <span style="color:#FFFFFF; font-size:13px; font-weight:800; letter-spacing:0.5px;">FMR</span>
+                                    <span style="color:#FFFFFF; font-size:13px; font-weight:800; letter-spacing:0.5px;">Satin</span>
                                   </td>
                                 </tr>
                               </table>
@@ -114,7 +114,7 @@ public class EmailService {
                             <td style="padding:24px 32px 8px 32px;">
                               <h1 style="margin:0 0 12px 0; color:#171412; font-size:22px; font-weight:700;">Reset your password</h1>
                               <p style="margin:0 0 8px 0; color:#6F625A; font-size:14px; line-height:22px;">
-                                We received a request to reset the password for your Fix My Room manager account.
+                                We received a request to reset the password for your Satin manager account.
                                 Click the button below to choose a new password.
                               </p>
                             </td>
@@ -157,7 +157,7 @@ public class EmailService {
                               <p style="margin:0; color:#6F625A; font-size:12px; line-height:18px;">
                                 If you didn't request a password reset, you can safely ignore this email — your password won't change.
                               </p>
-                              <p style="margin:12px 0 0 0; color:#6F625A; font-size:12px;">— The Fix My Room team</p>
+                              <p style="margin:12px 0 0 0; color:#6F625A; font-size:12px;">— The Satin team</p>
                             </td>
                           </tr>
                         </table>
@@ -181,7 +181,7 @@ public class EmailService {
                 MimeMessageHelper helper = new MimeMessageHelper(mime, true, "UTF-8");
                 helper.setFrom(from);
                 helper.setTo(to);
-                helper.setSubject("[FMR] " + subject);
+                helper.setSubject("[Satin] " + subject);
                 helper.setText(plainFallback, html);
                 mailer.send(mime);
                 log.debug("HTML email sent to {}: {}", to, subject);
@@ -201,7 +201,7 @@ public class EmailService {
                 SimpleMailMessage msg = new SimpleMailMessage();
                 msg.setFrom(from);
                 msg.setTo(to.toArray(new String[0]));
-                msg.setSubject("[FMR] " + subject);
+                msg.setSubject("[Satin] " + subject);
                 msg.setText(body);
                 mailer.send(msg);
                 log.debug("Email sent to {}: {}", to, subject);

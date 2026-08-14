@@ -63,9 +63,9 @@ export function AuthCard({
   return (
     <View style={styles.card}>
       <View style={styles.heading}>
-        <Text style={styles.title}>Sign in to Satin.</Text>
+        <Text style={styles.title}>Sign in to your account.</Text>
         <Text style={styles.subtitle}>
-          Enter your credentials to access your maintenance workspace.
+          Enter your credentials to access your workspace.
         </Text>
       </View>
 

@@ -58,8 +58,8 @@ class IssueApprovalIntegrationTest {
         UUID businessB = UUID.randomUUID();
         Instant now = Instant.now();
 
-        employeeRepo.createBusiness(businessA, "Business A", "addr", "UTC", now);
-        employeeRepo.createBusiness(businessB, "Business B", "addr", "UTC", now);
+        employeeRepo.createBusiness(businessA, "Business A", "addr", "UTC", "HOTEL", "USD", now);
+        employeeRepo.createBusiness(businessB, "Business B", "addr", "UTC", "HOTEL", "USD", now);
 
         managerAId = UUID.randomUUID();
         staffAId = UUID.randomUUID();

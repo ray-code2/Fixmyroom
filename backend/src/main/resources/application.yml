@@ -5,7 +5,7 @@ spring:
     url: ${FMR_DATASOURCE_URL:jdbc:h2:file:./data/fmr-phase1;MODE=PostgreSQL}
     username: ${FMR_DATASOURCE_USERNAME:sa}
     password: ${FMR_DATASOURCE_PASSWORD:}
-    driver-class-name: ${FMR_DATASOURCE_DRIVER:org.h2.Driver}
+    driver-class-name: ${FMR_DATASOURCE_DRIVER:#{null}}
   sql:
     init:
       mode: never   # schema is now owned by Liquibase (see db/changelog); schema.sql is reused as the baseline only
